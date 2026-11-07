@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buenas Prácticas en Bases de Datos</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap">
+    <style>
+        /* Variables CSS */
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a56d4;
+            --secondary: #7209b7;
+            --accent: #f72585;
+            --success: #4cc9f0;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --light-gray: #e9ecef;
+            --shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+            --border-radius: 10px;
+        }
+
+        /* Reset y estilos base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            line-height: 1.6;
+            color: var(--dark);
+            background-color: #f5f7fb;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Tipografía */
+        h1, h2, h3, h4 {
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        h2 {
+            font-size: 2.2rem;
+            color: var(--primary);
+            position: relative;
+            display: inline-block;
+        }
+
+        h2:after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 60px;
+            height: 4px;
+            background-color: var(--accent);
+            border-radius: 2px;
+        }
+
+        h3 {
+            font-size: 1.6rem;
+            color: var(--secondary);
+            margin-top: 1.5rem;
+        }
+
+        p {
+            margin-bottom: 1.2rem;
+        }
+
+        /* Encabezado y navegación */
+        header {
+            background-color: white;
+            box-shadow: var(--shadow);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            transition: var(--transition);
+        }
+
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .logo i {
+            margin-right: 10px;
+            color: var(--secondary);
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+        }
+
+        .nav-links li {
+            margin-left: 2rem;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--dark);
+            font-weight: 500;
+            transition: var(--transition);
+            position: relative;
+            padding: 0.5rem 0;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        .nav-links a:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background-color: var(--primary);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover:after {
+            width: 100%;
+        }
+
+        .burger {
+            display: none;
+            cursor: pointer;
+            font-size: 1.5rem;
+            color: var(--primary);
+        }
+
+        /* Hero section */
+        .hero {
+            padding: 10rem 0 5rem;
+            background: linear-gradient(135deg, rgba(67, 97, 238, 0.1) 0%, rgba(114, 9, 183, 0.1) 100%);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero h1 {
+            margin-bottom: 1.5rem;
+            animation: fadeInUp 1s ease;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            max-width: 800px;
+            margin: 0 auto 2.5rem;
+            color: var(--gray);
+            animation: fadeInUp 1s ease 0.2s both;
+        }
+
+        .hero-image {
+            max-width: 800px;
+            margin: 3rem auto 0;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            animation: fadeIn 1.5s ease 0.4s both;
+        }
+
+        .hero-image img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* Secciones de contenido */
+        section {
+            padding: 5rem 0;
+        }
+
+        .section-title {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        /* Tarjetas de buenas prácticas */
+        .practice-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .practice-card {
+            background-color: white;
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            border-top: 5px solid var(--primary);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .practice-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        .practice-card:nth-child(2) {
+            border-top-color: var(--secondary);
+        }
+
+        .practice-card:nth-child(3) {
+            border-top-color: var(--accent);
+        }
+
+        .practice-card:nth-child(4) {
+            border-top-color: var(--success);
+        }
+
+        .practice-card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.2rem;
+        }
+
+        .practice-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: rgba(67, 97, 238, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+            color: var(--primary);
+            font-size: 1.3rem;
+        }
+
+        .practice-card:nth-child(2) .practice-icon {
+            background-color: rgba(114, 9, 183, 0.1);
+            color: var(--secondary);
+        }
+
+        .practice-card:nth-child(3) .practice-icon {
+            background-color: rgba(247, 37, 133, 0.1);
+            color: var(--accent);
+        }
+
+        .practice-card:nth-child(4) .practice-icon {
+            background-color: rgba(76, 201, 240, 0.1);
+            color: var(--success);
+        }
+
+        .practice-card h3 {
+            margin-top: 0;
+            font-size: 1.4rem;
+        }
+
+        .duration {
+            display: inline-block;
+            background-color: var(--light-gray);
+            color: var(--gray);
+            padding: 0.3rem 0.8rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Contenido detallado */
+        .content-detail {
+            background-color: white;
+            border-radius: var(--border-radius);
+            padding: 2.5rem;
+            box-shadow: var(--shadow);
+            margin-bottom: 2rem;
+        }
+
+        .good-practice, .bad-practice {
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            margin: 1.5rem 0;
+        }
+
+        .good-practice {
+            background-color: rgba(76, 201, 240, 0.1);
+            border-left: 4px solid var(--success);
+        }
+
+        .bad-practice {
+            background-color: rgba(247, 37, 133, 0.1);
+            border-left: 4px solid var(--accent);
+        }
+
+        .good-practice h4, .bad-practice h4 {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .good-practice h4 i {
+            color: var(--success);
+            margin-right: 10px;
+        }
+
+        .bad-practice h4 i {
+            color: var(--accent);
+            margin-right: 10px;
+        }
+
+        /* Ejemplos de tablas */
+        .table-example {
+            width: 100%;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        th, td {
+            padding: 0.8rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--light-gray);
+        }
+
+        th {
+            background-color: var(--primary);
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+
+        tr:hover {
+            background-color: rgba(67, 97, 238, 0.05);
+        }
+
+        .table-caption {
+            font-style: italic;
+            margin-bottom: 0.5rem;
+            color: var(--gray);
+        }
+
+        /* Ejercicios interactivos */
+        .exercise-container {
+            background-color: white;
+            border-radius: var(--border-radius);
+            padding: 2.5rem;
+            box-shadow: var(--shadow);
+            margin: 2rem 0;
+        }
+
+        .exercise-question {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--light-gray);
+        }
+
+        .options-container {
+            margin: 1.5rem 0;
+        }
+
+        .option {
+            margin-bottom: 0.8rem;
+            padding: 1rem;
+            border: 2px solid var(--light-gray);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .option:hover {
+            border-color: var(--primary);
+            background-color: rgba(67, 97, 238, 0.05);
+        }
+
+        .option.selected {
+            border-color: var(--primary);
+            background-color: rgba(67, 97, 238, 0.1);
+        }
+
+        .option.correct {
+            border-color: var(--success);
+            background-color: rgba(76, 201, 240, 0.1);
+        }
+
+        .option.incorrect {
+            border-color: var(--accent);
+            background-color: rgba(247, 37, 133, 0.1);
+        }
+
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.8rem;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
+        }
+
+        .btn i {
+            margin-right: 8px;
+        }
+
+        .result {
+            margin-top: 1.5rem;
+            padding: 1.2rem;
+            border-radius: 8px;
+            display: none;
+            font-weight: 600;
+        }
+
+        .result.success {
+            background-color: rgba(76, 201, 240, 0.2);
+            color: #0a6c7e;
+            border-left: 4px solid var(--success);
+            display: block;
+        }
+
+        .result.error {
+            background-color: rgba(247, 37, 133, 0.1);
+            color: #a4133c;
+            border-left: 4px solid var(--accent);
+            display: block;
+        }
+
+        /* SQL Interactive */
+        .sql-editor {
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            padding: 1.5rem;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .sql-keyword {
+            color: #569cd6;
+        }
+
+        .sql-function {
+            color: #dcdcaa;
+        }
+
+        .sql-string {
+            color: #ce9178;
+        }
+
+        .sql-comment {
+            color: #6a9955;
+        }
+
+        .sql-table {
+            color: #4ec9b0;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        /* Pie de página */
+        footer {
+            background-color: var(--dark);
+            color: white;
+            padding: 4rem 0 2rem;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-section h3 {
+            color: white;
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .footer-section h3:after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 0;
+            width: 40px;
+            height: 3px;
+            background-color: var(--primary);
+        }
+
+        .footer-section p {
+            color: #adb5bd;
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid #495057;
+            color: #adb5bd;
+        }
+
+        /* Animaciones */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .animate-on-scroll {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+
+        .animate-on-scroll.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+            h1 {
+                font-size: 2.4rem;
+            }
+            
+            h2 {
+                font-size: 2rem;
+            }
+            
+            .practice-cards {
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                position: fixed;
+                top: 70px;
+                left: 0;
+                width: 100%;
+                background-color: white;
+                flex-direction: column;
+                align-items: center;
+                padding: 2rem 0;
+                box-shadow: var(--shadow);
+                transform: translateY(-100%);
+                opacity: 0;
+                transition: var(--transition);
+                z-index: 999;
+            }
+
+            .nav-links.active {
+                transform: translateY(0);
+                opacity: 1;
+            }
+
+            .nav-links li {
+                margin: 1rem 0;
+            }
+
+            .burger {
+                display: block;
+            }
+
+            .hero {
+                padding: 8rem 0 4rem;
+            }
+
+            section {
+                padding: 4rem 0;
+            }
+            
+            .content-detail, .exercise-container {
+                padding: 1.8rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            h2 {
+                font-size: 1.7rem;
+            }
+            
+            .practice-cards {
+                grid-template-columns: 1fr;
+            }
+            
+            .hero p {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Encabezado y navegación -->
+    <header>
+        <div class="container header-container">
+            <a href="#" class="logo">
+                <i class="fas fa-database"></i>
+                DB Buenas Prácticas
+            </a>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="#inicio">Inicio</a></li>
+                    <li><a href="#practicas">Buenas Prácticas</a></li>
+                    <li><a href="#ejemplos">Ejemplos</a></li>
+                    <li><a href="#ejercicios">Ejercicios</a></li>
+                </ul>
+                <div class="burger" id="burger">
+                    <i class="fas fa-bars"></i>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero section -->
+    <section class="hero" id="inicio">
+        <div class="container">
+            <h1>Buenas Prácticas en Diseño de Bases de Datos</h1>
+            <p>Aprende las mejores prácticas para diseñar bases de datos eficientes, escalables y mantenibles. Optimiza el rendimiento y evita problemas comunes con estas técnicas probadas.</p>
+            <div class="hero-image">
+                <img src="https://images.unsplash.com/photo-1547658719-da2b51169166?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Bases de datos">
+            </div>
+        </div>
+    </section>
+
+    <!-- Buenas Prácticas -->
+    <section id="practicas">
+        <div class="container">
+            <div class="section-title animate-on-scroll">
+                <h2>Buenas Prácticas en Bases de Datos</h2>
+                <p>Principios fundamentales para un diseño eficiente</p>
+            </div>
+            
+            <div class="practice-cards">
+                <!-- Tarjeta 1 -->
+                <div class="practice-card animate-on-scroll">
+                    <div class="practice-card-header">
+                        <div class="practice-icon">
+                            <i class="fas fa-table"></i>
+                        </div>
+                        <div>
+                            <h3>Más Tablas - Menos Columnas</h3>
+                            <span class="duration">6:08 min</span>
+                        </div>
+                    </div>
+                    <p>Dividir datos en tablas normalizadas en lugar de crear tablas con muchas columnas. Esto mejora el rendimiento y la mantenibilidad.</p>
+                    <ul>
+                        <li>Evita tablas con decenas de columnas</li>
+                        <li>Normaliza hasta la 3FN cuando sea posible</li>
+                        <li>Separa datos en entidades lógicas</li>
+                    </ul>
+                </div>
+                
+                <!-- Tarjeta 2 -->
+                <div class="practice-card animate-on-scroll">
+                    <div class="practice-card-header">
+                        <div class="practice-icon">
+                            <i class="fas fa-list-ol"></i>
+                        </div>
+                        <div>
+                            <h3>Más Registros - Menos Columnas</h3>
+                            <span class="duration">5:48 min</span>
+                        </div>
+                    </div>
+                    <p>Es mejor tener más registros con menos columnas que pocos registros con muchas columnas. Las bases de datos están optimizadas para este patrón.</p>
+                    <ul>
+                        <li>Mejor rendimiento en consultas</li>
+                        <li>Índices más eficientes</li>
+                        <li>Estructura más flexible</li>
+                    </ul>
+                </div>
+                
+                <!-- Tarjeta 3 -->
+                <div class="practice-card animate-on-scroll">
+                    <div class="practice-card-header">
+                        <div class="practice-icon">
+                            <i class="fas fa-toggle-on"></i>
+                        </div>
+                        <div>
+                            <h3>Usar Campos de Estado</h3>
+                            <span class="duration">5:03 min</span>
+                        </div>
+                    </div>
+                    <p>Incluir campos de estado (activo, inactivo, pendiente, etc.) en lugar de eliminar registros. Permite auditoría y recuperación de datos.</p>
+                    <ul>
+                        <li>Evita eliminaciones físicas</li>
+                        <li>Permite historial y auditoría</li>
+                        <li>Facilita reactivación de registros</li>
+                    </ul>
+                </div>
+                
+                <!-- Tarjeta 4 -->
+                <div class="practice-card animate-on-scroll">
+                    <div class="practice-card-header">
+                        <div class="practice-icon">
+                            <i class="fas fa-link"></i>
+                        </div>
+                        <div>
+                            <h3>Uso de Llaves Foráneas</h3>
+                            <span class="duration">9:35 min</span>
+                        </div>
+                    </div>
+                    <p>Implementar relaciones con llaves foráneas para mantener la integridad referencial. Define claramente las relaciones entre tablas.</p>
+                    <ul>
+                        <li>Mantiene consistencia de datos</li>
+                        <li>Define relaciones explícitas</li>
+                        <li>Permite operaciones en cascada</li>
+                    </ul>
+                </div>
+                
+                <!-- Tarjeta 5 -->
+                <div class="practice-card animate-on-scroll">
+                    <div class="practice-card-header">
+                        <div class="practice-icon">
+                            <i class="fas fa-cog"></i>
+                        </div>
+                        <div>
+                            <h3>Usar Valores Default</h3>
+                            <span class="duration">3:25 min</span>
+                        </div>
+                    </div>
+                    <p>Definir valores por defecto para columnas comunes. Reduce la complejidad del código de aplicación y asegura consistencia.</p>
+                    <ul>
+                        <li>Simplifica inserciones</li>
+                        <li>Asegura valores consistentes</li>
+                        <li>Reduce código repetitivo</li>
+                    </ul>
+                </div>
+                
+                <!-- Tarjeta 6 -->
+                <div class="practice-card animate-on-scroll">
+                    <div class="practice-card-header">
+                        <div class="practice-icon">
+                            <i class="fas fa-chart-bar"></i>
+                        </div>
+                        <div>
+                            <h3>Tablas Resumen</h3>
+                            <span class="duration">4:15 min</span>
+                        </div>
+                    </div>
+                    <p>Crear tablas de resumen para datos agregados. Mejora el rendimiento de consultas complejas y reportes frecuentes.</p>
+                    <ul>
+                        <li>Optimiza consultas agregadas</li>
+                        <li>Mejora tiempos de reportes</li>
+                        <li>Reduce carga en tablas detalle</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Ejemplos Detallados -->
+    <section id="ejemplos">
+        <div class="container">
+            <div class="section-title animate-on-scroll">
+                <h2>Ejemplos Prácticos</h2>
+                <p>Aplicación de las buenas prácticas con ejemplos reales</p>
+            </div>
+            
+            <!-- Ejemplo 1: Más Tablas - Menos Columnas -->
+            <div class="content-detail animate-on-scroll">
+                <h3>Más Tablas - Menos Columnas</h3>
+                <p>En lugar de crear una tabla "monolítica" con todos los datos, dividimos la información en tablas relacionadas.</p>
+                
+                <div class="bad-practice">
+                    <h4><i class="fas fa-times-circle"></i> MALA PRÁCTICA: Tabla con muchas columnas</h4>
+                    <div class="table-example">
+                        <p class="table-caption">Tabla: productos</p>
+                        <table>
+                            <tr>
+                                <th>id</th>
+                                <th>nombre</th>
+                                <th>descripcion</th>
+                                <th>precio</th>
+                                <th>categoria</th>
+                                <th>subcategoria</th>
+                                <th>marca</th>
+                                <th>modelo</th>
+                                <th>color</th>
+                                <th>tamaño</th>
+                                <th>peso</th>
+                                <th>proveedor</th>
+                                <th>telefono_proveedor</th>
+                                <th>email_proveedor</th>
+                                <!-- + 20 columnas más -->
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="good-practice">
+                    <h4><i class="fas fa-check-circle"></i> BUENA PRÁCTICA: Tablas normalizadas</h4>
+                    <div class="sql-editor">
+                        <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+                        <pre><code><span class="sql-keyword">CREATE TABLE</span> <span class="sql-table">productos</span> (
+    id <span class="sql-keyword">INT PRIMARY KEY AUTO_INCREMENT</span>,
+    nombre <span class="sql-keyword">VARCHAR</span>(100),
+    descripcion <span class="sql-keyword">TEXT</span>,
+    precio <span class="sql-keyword">DECIMAL</span>(10,2),
+    categoria_id <span class="sql-keyword">INT</span>,
+    marca_id <span class="sql-keyword">INT</span>,
+    <span class="sql-keyword">FOREIGN KEY</span> (categoria_id) <span class="sql-keyword">REFERENCES</span> categorias(id),
+    <span class="sql-keyword">FOREIGN KEY</span> (marca_id) <span class="sql-keyword">REFERENCES</span> marcas(id)
+);
+
+<span class="sql-keyword">CREATE TABLE</span> <span class="sql-table">categorias</span> (
+    id <span class="sql-keyword">INT PRIMARY KEY AUTO_INCREMENT</span>,
+    nombre <span class="sql-keyword">VARCHAR</span>(50),
+    subcategoria <span class="sql-keyword">VARCHAR</span>(50)
+);
+
+<span class="sql-keyword">CREATE TABLE</span> <span class="sql-table">marcas</span> (
+    id <span class="sql-keyword">INT PRIMARY KEY AUTO_INCREMENT</span>,
+    nombre <span class="sql-keyword">VARCHAR</span>(50),
+    pais_origen <span class="sql-keyword">VARCHAR</span>(50)
+);
+
+<span class="sql-keyword">CREATE TABLE</span> <span class="sql-table">proveedores</span> (
+    id <span class="sql-keyword">INT PRIMARY KEY AUTO_INCREMENT</span>,
+    nombre <span class="sql-keyword">VARCHAR</span>(100),
+    telefono <span class="sql-keyword">VARCHAR</span>(20),
+    email <span class="sql-keyword">VARCHAR</span>(100)
+);</code></pre>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Ejemplo 2: Campos de Estado y Valores Default -->
+            <div class="content-detail animate-on-scroll">
+                <h3>Campos de Estado y Valores Default</h3>
+                <p>Implementación de campos de estado para controlar el ciclo de vida de los registros, junto con valores por defecto.</p>
+                
+                <div class="sql-editor">
+                    <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+                    <pre><code><span class="sql-keyword">CREATE TABLE</span> <span class="sql-table">clientes</span> (
+    id <span class="sql-keyword">INT PRIMARY KEY AUTO_INCREMENT</span>,
+    nombre <span class="sql-keyword">VARCHAR</span>(100) <span class="sql-keyword">NOT NULL</span>,
+    email <span class="sql-keyword">VARCHAR</span>(100) <span class="sql-keyword">UNIQUE NOT NULL</span>,
+    telefono <span class="sql-keyword">VARCHAR</span>(20),
+    
+    <span class="sql-comment">-- Campo de estado con valor por defecto</span>
+    estado <span class="sql-keyword">ENUM</span>('activo', 'inactivo', 'suspendido', 'eliminado') 
+           <span class="sql-keyword">DEFAULT</span> 'activo',
+    
+    <span class="sql-comment">-- Campos de auditoría con valores por defecto</span>
+    fecha_creacion <span class="sql-keyword">TIMESTAMP DEFAULT</span> <span class="sql-function">CURRENT_TIMESTAMP</span>,
+    fecha_actualizacion <span class="sql-keyword">TIMESTAMP DEFAULT</span> <span class="sql-function">CURRENT_TIMESTAMP</span> 
+                         <span class="sql-keyword">ON UPDATE</span> <span class="sql-function">CURRENT_TIMESTAMP</span>,
+    creado_por <span class="sql-keyword">VARCHAR</span>(50) <span class="sql-keyword">DEFAULT</span> 'sistema'
+);
+
+<span class="sql-comment">-- En lugar de DELETE, usamos UPDATE para cambiar el estado</span>
+<span class="sql-keyword">UPDATE</span> clientes <span class="sql-keyword">SET</span> estado = 'eliminado' <span class="sql-keyword">WHERE</span> id = 123;
+
+<span class="sql-comment">-- Consulta solo clientes activos</span>
+<span class="sql-keyword">SELECT</span> * <span class="sql-keyword">FROM</span> clientes <span class="sql-keyword">WHERE</span> estado = 'activo';</code></pre>
+                </div>
+            </div>
+            
+            <!-- Ejemplo 3: Tablas Resumen -->
+            <div class="content-detail animate-on-scroll">
+                <h3>Tablas Resumen para Reportes</h3>
+                <p>Crear tablas de resumen para datos agregados que se consultan frecuentemente.</p>
+                
+                <div class="sql-editor">
+                    <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+                    <pre><code><span class="sql-comment">-- Tabla de transacciones detalladas</span>
+<span class="sql-keyword">CREATE TABLE</span> <span class="sql-table">ventas</span> (
+    id <span class="sql-keyword">INT PRIMARY KEY AUTO_INCREMENT</span>,
+    cliente_id <span class="sql-keyword">INT</span>,
+    producto_id <span class="sql-keyword">INT</span>,
+    cantidad <span class="sql-keyword">INT</span>,
+    precio_unitario <span class="sql-keyword">DECIMAL</span>(10,2),
+    total <span class="sql-keyword">DECIMAL</span>(10,2),
+    fecha <span class="sql-keyword">DATE</span>,
+    <span class="sql-keyword">FOREIGN KEY</span> (cliente_id) <span class="sql-keyword">REFERENCES</span> clientes(id),
+    <span class="sql-keyword">FOREIGN KEY</span> (producto_id) <span class="sql-keyword">REFERENCES</span> productos(id)
+);
+
+<span class="sql-comment">-- Tabla resumen para reportes diarios</span>
+<span class="sql-keyword">CREATE TABLE</span> <span class="sql-table">resumen_ventas_diarias</span> (
+    id <span class="sql-keyword">INT PRIMARY KEY AUTO_INCREMENT</span>,
+    fecha <span class="sql-keyword">DATE UNIQUE</span>,
+    total_ventas <span class="sql-keyword">DECIMAL</span>(12,2),
+    cantidad_transacciones <span class="sql-keyword">INT</span>,
+    promedio_venta <span class="sql-keyword">DECIMAL</span>(10,2),
+    cliente_top <span class="sql-keyword">INT</span>,
+    producto_top <span class="sql-keyword">INT</span>,
+    fecha_actualizacion <span class="sql-keyword">TIMESTAMP DEFAULT</span> <span class="sql-function">CURRENT_TIMESTAMP</span>
+);
+
+<span class="sql-comment">-- Procedimiento para actualizar el resumen</span>
+<span class="sql-keyword">CREATE PROCEDURE</span> actualizar_resumen_ventas(<span class="sql-keyword">IN</span> p_fecha <span class="sql-keyword">DATE</span>)
+<span class="sql-keyword">BEGIN</span>
+    <span class="sql-keyword">INSERT INTO</span> resumen_ventas_diarias (fecha, total_ventas, cantidad_transacciones, 
+                                     promedio_venta, cliente_top, producto_top)
+    <span class="sql-keyword">SELECT</span>
+        p_fecha,
+        <span class="sql-function">SUM</span>(total),
+        <span class="sql-function">COUNT</span>(*),
+        <span class="sql-function">AVG</span>(total),
+        (
+            <span class="sql-keyword">SELECT</span> cliente_id 
+            <span class="sql-keyword">FROM</span> ventas 
+            <span class="sql-keyword">WHERE</span> fecha = p_fecha 
+            <span class="sql-keyword">GROUP BY</span> cliente_id 
+            <span class="sql-keyword">ORDER BY</span> <span class="sql-function">SUM</span>(total) <span class="sql-keyword">DESC</span> 
+            <span class="sql-keyword">LIMIT</span> 1
+        ),
+        (
+            <span class="sql-keyword">SELECT</span> producto_id 
+            <span class="sql-keyword">FROM</span> ventas 
+            <span class="sql-keyword">WHERE</span> fecha = p_fecha 
+            <span class="sql-keyword">GROUP BY</span> producto_id 
+            <span class="sql-keyword">ORDER BY</span> <span class="sql-function">SUM</span>(cantidad) <span class="sql-keyword">DESC</span> 
+            <span class="sql-keyword">LIMIT</span> 1
+        )
+    <span class="sql-keyword">FROM</span> ventas 
+    <span class="sql-keyword">WHERE</span> fecha = p_fecha
+    <span class="sql-keyword">ON DUPLICATE KEY UPDATE</span>
+        total_ventas = <span class="sql-function">VALUES</span>(total_ventas),
+        cantidad_transacciones = <span class="sql-function">VALUES</span>(cantidad_transacciones),
+        promedio_venta = <span class="sql-function">VALUES</span>(promedio_venta),
+        cliente_top = <span class="sql-function">VALUES</span>(cliente_top),
+        producto_top = <span class="sql-function">VALUES</span>(producto_top),
+        fecha_actualizacion = <span class="sql-function">CURRENT_TIMESTAMP</span>;
+<span class="sql-keyword">END</span>;</code></pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Ejercicios Interactivos -->
+    <section id="ejercicios">
+        <div class="container">
+            <div class="section-title animate-on-scroll">
+                <h2>Ejercicios Interactivos</h2>
+                <p>Pon a prueba tus conocimientos sobre buenas prácticas</p>
+            </div>
+            
+            <!-- Ejercicio 1 -->
+            <div class="exercise-container animate-on-scroll">
+                <h3>Ejercicio 1: Normalización de Tablas</h3>
+                <div class="exercise-question">
+                    <p>Dada la siguiente tabla no normalizada, ¿cuál sería la mejor forma de dividirla en tablas normalizadas?</p>
+                    <div class="table-example">
+                        <table>
+                            <tr>
+                                <th>orden_id</th>
+                                <th>cliente_nombre</th>
+                                <th>cliente_email</th>
+                                <th>producto_nombre</th>
+                                <th>producto_categoria</th>
+                                <th>cantidad</th>
+                                <th>precio</th>
+                                <th>fecha</th>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="options-container" id="exercise1-options">
+                    <div class="option" data-correct="false">
+                        A) Crear una sola tabla con todas las columnas pero agregar índices
+                    </div>
+                    <div class="option" data-correct="true">
+                        B) Crear tablas separadas: clientes, productos y ordenes con relaciones
+                    </div>
+                    <div class="option" data-correct="false">
+                        C) Mantener la estructura actual pero agregar más columnas para detalles
+                    </div>
+                    <div class="option" data-correct="false">
+                        D) Dividir solo por fechas en tablas mensuales
+                    </div>
+                </div>
+                
+                <button class="btn" onclick="checkExercise('exercise1')">
+                    <i class="fas fa-check-circle"></i> Verificar Respuesta
+                </button>
+                
+                <div class="result" id="exercise1-result"></div>
+            </div>
+            
+            <!-- Ejercicio 2 -->
+            <div class="exercise-container animate-on-scroll">
+                <h3>Ejercicio 2: Implementación de Campos de Estado</h3>
+                <div class="exercise-question">
+                    <p>¿Cuál de las siguientes implementaciones de campo de estado es la más apropiada para una tabla de usuarios?</p>
+                </div>
+                
+                <div class="options-container" id="exercise2-options">
+                    <div class="option" data-correct="true">
+                        A) estado ENUM('activo', 'inactivo', 'suspendido', 'eliminado') DEFAULT 'activo'
+                    </div>
+                    <div class="option" data-correct="false">
+                        B) activo BOOLEAN DEFAULT TRUE
+                    </div>
+                    <div class="option" data-correct="false">
+                        C) estado INT DEFAULT 1 (1=activo, 0=inactivo)
+                    </div>
+                    <div class="option" data-correct="false">
+                        D) fecha_eliminacion DATE NULL
+                    </div>
+                </div>
+                
+                <button class="btn" onclick="checkExercise('exercise2')">
+                    <i class="fas fa-check-circle"></i> Verificar Respuesta
+                </button>
+                
+                <div class="result" id="exercise2-result"></div>
+            </div>
+            
+            <!-- Ejercicio 3 -->
+            <div class="exercise-container animate-on-scroll">
+                <h3>Ejercicio 3: Diseño de Tabla con Llaves Foráneas</h3>
+                <div class="exercise-question">
+                    <p>Completa el diseño de la tabla "pedidos" con las llaves foráneas apropiadas:</p>
+                    <div class="sql-editor">
+                        <pre><code><span class="sql-keyword">CREATE TABLE</span> <span class="sql-table">pedidos</span> (
+    id <span class="sql-keyword">INT PRIMARY KEY AUTO_INCREMENT</span>,
+    fecha <span class="sql-keyword">TIMESTAMP DEFAULT</span> <span class="sql-function">CURRENT_TIMESTAMP</span>,
+    total <span class="sql-keyword">DECIMAL</span>(10,2),
+    <span class="sql-comment">-- COMPLETA AQUÍ LAS LLAVES FORÁNEAS</span>
+    <span class="sql-comment">-- cliente_id INT,</span>
+    <span class="sql-comment">-- empleado_id INT,</span>
+    <span class="sql-comment">-- estado_id INT</span>
+);</code></pre>
+                    </div>
+                </div>
+                
+                <div class="options-container" id="exercise3-options">
+                    <div class="option" data-correct="true">
+                        A) FOREIGN KEY (cliente_id) REFERENCES clientes(id),<br>
+                           FOREIGN KEY (empleado_id) REFERENCES empleados(id),<br>
+                           FOREIGN KEY (estado_id) REFERENCES estados_pedido(id)
+                    </div>
+                    <div class="option" data-correct="false">
+                        B) INDEX cliente_idx (cliente_id),<br>
+                           INDEX empleado_idx (empleado_id),<br>
+                           INDEX estado_idx (estado_id)
+                    </div>
+                    <div class="option" data-correct="false">
+                        C) cliente_id INT REFERENCES clientes,<br>
+                           empleado_id INT REFERENCES empleados,<br>
+                           estado_id INT REFERENCES estados_pedido
+                    </div>
+                    <div class="option" data-correct="false">
+                        D) CONSTRAINT fk_cliente FOREIGN KEY cliente_id REFERENCES clientes,<br>
+                           CONSTRAINT fk_empleado FOREIGN KEY empleado_id REFERENCES empleados
+                    </div>
+                </div>
+                
+                <button class="btn" onclick="checkExercise('exercise3')">
+                    <i class="fas fa-check-circle"></i> Verificar Respuesta
+                </button>
+                
+                <div class="result" id="exercise3-result"></div>
+            </div>
+            
+            <!-- Práctica Libre -->
+            <div class="exercise-container animate-on-scroll">
+                <h3>Práctica Libre: Diseña tu propia base de datos</h3>
+                <p>Intenta diseñar un esquema de base de datos para un sistema de biblioteca que incluya:</p>
+                <ul>
+                    <li>Libros (con autores, categorías, editoriales)</li>
+                    <li>Usuarios (con estados: activo, suspendido, inactivo)</li>
+                    <li>Préstamos (con fechas y estados: activo, devuelto, vencido)</li>
+                    <li>Tablas de resumen para reportes de libros más prestados</li>
+                </ul>
+                
+                <div class="sql-editor">
+                    <textarea id="sql-practice" placeholder="Escribe tu diseño SQL aquí..." rows="10"></textarea>
+                </div>
+                
+                <button class="btn" onclick="validateSQLPractice()">
+                    <i class="fas fa-code"></i> Validar SQL
+                </button>
+                
+                <div class="result" id="sql-practice-result"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pie de página -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Buenas Prácticas en BD</h3>
+                    <p>Un recurso educativo para aprender las mejores prácticas en diseño y administración de bases de datos.</p>
+                    <p><i class="fas fa-database"></i> Fundamentos esenciales para desarrolladores y DBA</p>
+                </div>
+                <div class="footer-section">
+                    <h3>Enlaces Rápidos</h3>
+                    <ul style="list-style: none; color: #adb5bd;">
+                        <li style="margin-bottom: 0.5rem;"><a href="#inicio" style="color: #adb5bd; text-decoration: none;">Inicio</a></li>
+                        <li style="margin-bottom: 0.5rem;"><a href="#practicas" style="color: #adb5bd; text-decoration: none;">Buenas Prácticas</a></li>
+                        <li style="margin-bottom: 0.5rem;"><a href="#ejemplos" style="color: #adb5bd; text-decoration: none;">Ejemplos</a></li>
+                        <li><a href="#ejercicios" style="color: #adb5bd; text-decoration: none;">Ejercicios</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Recursos Adicionales</h3>
+                    <p>Para profundizar en el tema, recomendamos:</p>
+                    <ul style="list-style: none; color: #adb5bd;">
+                        <li><i class="fas fa-book"></i> Database Design Fundamentals</li>
+                        <li><i class="fas fa-video"></i> Curso de Normalización de Datos</li>
+                        <li><i class="fas fa-code"></i> Patrones de Diseño para Bases de Datos</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2023 Buenas Prácticas en Bases de Datos. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Menú hamburguesa para dispositivos móviles
+        const burger = document.getElementById('burger');
+        const navLinks = document.querySelector('.nav-links');
+        
+        burger.addEventListener('click', () => {
+            navLinks.classList.toggle('active');
+            burger.querySelector('i').classList.toggle('fa-bars');
+            burger.querySelector('i').classList.toggle('fa-times');
+        });
+        
+        // Cerrar menú al hacer clic en un enlace (en móviles)
+        document.querySelectorAll('.nav-links a').forEach(link => {
+            link.addEventListener('click', () => {
+                navLinks.classList.remove('active');
+                burger.querySelector('i').classList.add('fa-bars');
+                burger.querySelector('i').classList.remove('fa-times');
+            });
+        });
+        
+        // Animaciones al hacer scroll
+        const animateElements = document.querySelectorAll('.animate-on-scroll');
+        
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, {
+            threshold: 0.1
+        });
+        
+        animateElements.forEach(element => {
+            observer.observe(element);
+        });
+        
+        // Cambiar estilo del encabezado al hacer scroll
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('header');
+            if (window.scrollY > 50) {
+                header.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
+                header.style.padding = '0.5rem 0';
+            } else {
+                header.style.boxShadow = 'var(--shadow)';
+                header.style.padding = '0';
+            }
+        });
+        
+        // Ejercicios interactivos
+        function setupExerciseOptions() {
+            document.querySelectorAll('.options-container .option').forEach(option => {
+                option.addEventListener('click', function() {
+                    // Remover selección previa en este contenedor
+                    const container = this.closest('.options-container');
+                    container.querySelectorAll('.option').forEach(opt => {
+                        opt.classList.remove('selected');
+                    });
+                    
+                    // Seleccionar esta opción
+                    this.classList.add('selected');
+                });
+            });
+        }
+        
+        function checkExercise(exerciseId) {
+            const container = document.getElementById(`${exerciseId}-options`);
+            const resultElement = document.getElementById(`${exerciseId}-result`);
+            const selectedOption = container.querySelector('.option.selected');
+            
+            if (!selectedOption) {
+                resultElement.textContent = 'Por favor, selecciona una respuesta primero.';
+                resultElement.className = 'result error';
+                return;
+            }
+            
+            const isCorrect = selectedOption.getAttribute('data-correct') === 'true';
+            
+            // Remover clases previas
+            container.querySelectorAll('.option').forEach(opt => {
+                opt.classList.remove('correct', 'incorrect');
+            });
+            
+            // Marcar opciones correctas/incorrectas
+            container.querySelectorAll('.option').forEach(opt => {
+                if (opt.getAttribute('data-correct') === 'true') {
+                    opt.classList.add('correct');
+                } else {
+                    opt.classList.add('incorrect');
+                }
+            });
+            
+            // Mostrar resultado
+            if (isCorrect) {
+                resultElement.textContent = '¡Correcto! Has seleccionado la mejor práctica.';
+                resultElement.className = 'result success';
+            } else {
+                resultElement.textContent = 'Incorrecto. Revisa la explicación y vuelve a intentarlo.';
+                resultElement.className = 'result error';
+            }
+        }
+        
+        // Validar práctica de SQL
+        function validateSQLPractice() {
+            const sqlText = document.getElementById('sql-practice').value.toLowerCase();
+            const resultElement = document.getElementById('sql-practice-result');
+            
+            if (!sqlText.trim()) {
+                resultElement.textContent = 'Por favor, escribe tu diseño SQL primero.';
+                resultElement.className = 'result error';
+                return;
+            }
+            
+            // Verificar elementos clave
+            const checks = {
+                'CREATE TABLE': sqlText.includes('create table'),
+                'PRIMARY KEY': sqlText.includes('primary key'),
+                'FOREIGN KEY': sqlText.includes('foreign key'),
+                'REFERENCES': sqlText.includes('references'),
+                'DEFAULT': sqlText.includes('default'),
+            };
+            
+            const missing = Object.keys(checks).filter(key => !checks[key]);
+            
+            if (missing.length === 0) {
+                resultElement.innerHTML = '¡Excelente! Tu diseño SQL incluye los elementos clave de buenas prácticas.<br>Verifica que hayas incluido: tablas normalizadas, llaves foráneas y campos de estado.';
+                resultElement.className = 'result success';
+            } else {
+                resultElement.innerHTML = `Tu diseño está bien, pero podrías mejorar. Faltan: <strong>${missing.join(', ')}</strong>.<br>Recuerda aplicar todas las buenas prácticas vistas.`;
+                resultElement.className = 'result error';
+            }
+        }
+        
+        // Copiar código SQL
+        function copyCode(button) {
+            const codeElement = button.parentElement.querySelector('code');
+            const textArea = document.createElement('textarea');
+            textArea.value = codeElement.textContent;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            // Feedback visual
+            const originalText = button.textContent;
+            button.textContent = '¡Copiado!';
+            button.style.backgroundColor = '#4CAF50';
+            
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.style.backgroundColor = '';
+            }, 2000);
+        }
+        
+        // Inicializar ejercicios
+        document.addEventListener('DOMContentLoaded', function() {
+            setupExerciseOptions();
+            
+            // Efecto de carga inicial
+            document.body.style.opacity = '0';
+            document.body.style.transition = 'opacity 0.5s ease';
+            
+            setTimeout(() => {
+                document.body.style.opacity = '1';
+            }, 100);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,2018 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tercera Forma Normal (3NF) - Tutorial Interactivo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;700&family=Source+Code+Pro:wght@400;600;700&family=Archivo+Black&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --navy: #1b4332;
+            --light-navy: #112240;
+            --lightest-navy: #1d3557;
+            --slate: #8892b0;
+            --light-slate: #a8b2d1;
+            --lightest-slate: #ccd6f6;
+            --white: #e6f1ff;
+            --green: #52b788;
+            --green-tint: rgba(100, 255, 218, 0.1);
+            --orange: #95d5b2;
+            --red: #e63946;
+            --yellow: #fcbf49;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Bitter', serif;
+            background: var(--navy);
+            color: var(--slate);
+            line-height: 1.8;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, var(--light-navy), var(--navy));
+            padding: 80px 20px 60px;
+            text-align: center;
+            position: relative;
+            border-bottom: 3px solid var(--green);
+        }
+
+        header::before {
+            content: '1';
+            position: absolute;
+            top: -50px;
+            right: 10%;
+            font-family: 'Archivo Black', sans-serif;
+            font-size: 20em;
+            color: rgba(100, 255, 218, 0.03);
+            font-weight: 900;
+            z-index: 0;
+            line-height: 1;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .badge {
+            display: inline-block;
+            background: var(--green-tint);
+            color: var(--green);
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 700;
+            margin-bottom: 20px;
+            border: 1px solid var(--green);
+            font-family: 'Source Code Pro', monospace;
+        }
+
+        h1 {
+            font-family: 'Archivo Black', sans-serif;
+            font-size: 4em;
+            color: var(--lightest-slate);
+            margin-bottom: 20px;
+            letter-spacing: -1px;
+        }
+
+        h1 .highlight {
+            color: var(--green);
+            display: block;
+            font-size: 1.2em;
+            margin-top: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.3em;
+            color: var(--light-slate);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Navigation */
+        nav {
+            background: var(--light-navy);
+            padding: 20px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid var(--lightest-navy);
+            backdrop-filter: blur(10px);
+        }
+
+        nav ul {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 30px;
+            list-style: none;
+        }
+
+        nav a {
+            color: var(--slate);
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.95em;
+            font-family: 'Source Code Pro', monospace;
+            transition: all 0.3s ease;
+            padding: 5px 10px;
+            position: relative;
+        }
+
+        nav a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--green);
+            transition: width 0.3s ease;
+        }
+
+        nav a:hover {
+            color: var(--green);
+        }
+
+        nav a:hover::after {
+            width: 100%;
+        }
+
+        /* Sections */
+        section {
+            padding: 80px 20px;
+            border-bottom: 1px solid var(--lightest-navy);
+        }
+
+        section:nth-child(even) {
+            background: var(--light-navy);
+        }
+
+        h2 {
+            font-family: 'Archivo Black', sans-serif;
+            font-size: 2.8em;
+            color: var(--lightest-slate);
+            margin-bottom: 30px;
+            position: relative;
+            padding-left: 30px;
+        }
+
+        h2::before {
+            content: '//';
+            position: absolute;
+            left: 0;
+            color: var(--green);
+            font-family: 'Source Code Pro', monospace;
+        }
+
+        h3 {
+            font-family: 'Archivo Black', sans-serif;
+            font-size: 1.8em;
+            color: var(--light-slate);
+            margin: 40px 0 20px;
+        }
+
+        /* Info Box */
+        .info-box {
+            background: var(--lightest-navy);
+            border-left: 4px solid var(--green);
+            padding: 30px;
+            margin: 30px 0;
+            border-radius: 0 10px 10px 0;
+            position: relative;
+        }
+
+        .info-box.warning {
+            border-left-color: var(--orange);
+        }
+
+        .info-box.error {
+            border-left-color: var(--red);
+        }
+
+        .info-box.success {
+            border-left-color: var(--green);
+        }
+
+        .info-icon {
+            position: absolute;
+            top: -15px;
+            left: 20px;
+            background: var(--lightest-navy);
+            padding: 5px 15px;
+            border-radius: 20px;
+            border: 2px solid var(--green);
+            color: var(--green);
+            font-weight: 700;
+            font-size: 0.9em;
+            font-family: 'Source Code Pro', monospace;
+        }
+
+        .info-box.warning .info-icon {
+            border-color: var(--orange);
+            color: var(--orange);
+        }
+
+        .info-box.error .info-icon {
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        /* Rules List */
+        .rules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin: 40px 0;
+        }
+
+        .rule-card {
+            background: var(--light-navy);
+            border: 2px solid var(--lightest-navy);
+            padding: 30px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .rule-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--green);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
+        }
+
+        .rule-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--green);
+            box-shadow: 0 10px 30px rgba(100, 255, 218, 0.1);
+        }
+
+        .rule-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .rule-number {
+            display: inline-block;
+            background: var(--green);
+            color: var(--navy);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 40px;
+            font-weight: 700;
+            font-family: 'Source Code Pro', monospace;
+            margin-bottom: 15px;
+        }
+
+        .rule-card h3 {
+            margin-top: 0;
+            font-size: 1.4em;
+            color: var(--lightest-slate);
+        }
+
+        /* Table Styles */
+        .table-container {
+            background: var(--light-navy);
+            padding: 30px;
+            border-radius: 10px;
+            margin: 30px 0;
+            overflow-x: auto;
+            border: 1px solid var(--lightest-navy);
+        }
+
+        .table-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            font-family: 'Source Code Pro', monospace;
+            font-weight: 700;
+        }
+
+        .table-label.bad {
+            color: var(--red);
+        }
+
+        .table-label.good {
+            color: var(--green);
+        }
+
+        .table-label::before {
+            content: '✗';
+            font-size: 1.5em;
+        }
+
+        .table-label.good::before {
+            content: '✓';
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'Source Code Pro', monospace;
+            font-size: 0.9em;
+        }
+
+        th {
+            background: var(--lightest-navy);
+            color: var(--green);
+            padding: 15px;
+            text-align: left;
+            font-weight: 700;
+            border-bottom: 2px solid var(--green);
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--lightest-navy);
+            color: var(--light-slate);
+        }
+
+        tr:hover td {
+            background: rgba(100, 255, 218, 0.05);
+        }
+
+        .highlight-cell {
+            background: rgba(230, 57, 70, 0.2) !important;
+            color: var(--red);
+            font-weight: 700;
+        }
+
+        /* Code Block */
+        .code-block {
+            background: var(--lightest-navy);
+            border: 1px solid var(--green);
+            padding: 25px;
+            border-radius: 10px;
+            font-family: 'Source Code Pro', monospace;
+            font-size: 0.95em;
+            margin: 25px 0;
+            position: relative;
+            overflow-x: auto;
+        }
+
+        .code-block::before {
+            content: 'SQL';
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: var(--green);
+            color: var(--navy);
+            padding: 3px 12px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            font-weight: 700;
+        }
+
+        .code-line {
+            color: var(--light-slate);
+            line-height: 1.8;
+        }
+
+        .keyword {
+            color: var(--green);
+            font-weight: 700;
+        }
+
+        .string {
+            color: var(--orange);
+        }
+
+        .comment {
+            color: var(--slate);
+            font-style: italic;
+        }
+
+        /* Comparison */
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 30px;
+            align-items: center;
+            margin: 40px 0;
+        }
+
+        .arrow {
+            font-size: 3em;
+            color: var(--green);
+            text-align: center;
+        }
+
+        /* Exercise Section */
+        .exercise {
+            background: var(--lightest-navy);
+            border: 2px solid var(--orange);
+            padding: 40px;
+            border-radius: 15px;
+            margin: 40px 0;
+        }
+
+        .exercise-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .exercise-number {
+            background: var(--orange);
+            color: var(--navy);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Archivo Black', sans-serif;
+            font-size: 1.5em;
+        }
+
+        .exercise h3 {
+            margin: 0;
+            color: var(--lightest-slate);
+        }
+
+        .exercise-question {
+            background: var(--light-navy);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid var(--orange);
+        }
+
+        .answer-section {
+            background: var(--light-navy);
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .answer-section.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .show-answer-btn {
+            background: var(--green);
+            color: var(--navy);
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-family: 'Source Code Pro', monospace;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1em;
+        }
+
+        .show-answer-btn:hover {
+            background: var(--lightest-slate);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(100, 255, 218, 0.3);
+        }
+
+        /* Steps */
+        .steps {
+            margin: 30px 0;
+        }
+
+        .step {
+            display: flex;
+            gap: 20px;
+            margin: 25px 0;
+            padding: 25px;
+            background: var(--light-navy);
+            border-radius: 10px;
+            border-left: 4px solid var(--green);
+        }
+
+        .step-number {
+            flex-shrink: 0;
+            width: 40px;
+            height: 40px;
+            background: var(--green);
+            color: var(--navy);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-family: 'Source Code Pro', monospace;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-content h4 {
+            color: var(--lightest-slate);
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--light-navy);
+            padding: 60px 20px 40px;
+            text-align: center;
+            border-top: 3px solid var(--green);
+        }
+
+        .footer-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .footer-note {
+            color: var(--green);
+            font-family: 'Source Code Pro', monospace;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5em;
+            }
+
+            h2 {
+                font-size: 2em;
+            }
+
+            .comparison {
+                grid-template-columns: 1fr;
+            }
+
+            .arrow {
+                transform: rotate(90deg);
+            }
+
+            nav ul {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .rules-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Scroll to top */
+        .scroll-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            background: var(--green);
+            color: var(--navy);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            cursor: pointer;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            border: 2px solid var(--navy);
+        }
+
+        .scroll-top.show {
+            opacity: 1;
+        }
+
+        .scroll-top:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(100, 255, 218, 0.4);
+        }
+
+        /* Example boxes */
+        .example-box {
+            background: linear-gradient(135deg, rgba(100, 255, 218, 0.05), rgba(100, 255, 218, 0.02));
+            border: 2px dashed var(--green);
+            padding: 30px;
+            border-radius: 10px;
+            margin: 30px 0;
+        }
+
+        .example-title {
+            color: var(--green);
+            font-family: 'Archivo Black', sans-serif;
+            font-size: 1.3em;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .example-title::before {
+            content: '📝';
+            font-size: 1.2em;
+        }
+
+        ul, ol {
+            margin: 20px 0 20px 30px;
+        }
+
+        li {
+            margin: 10px 0;
+            color: var(--light-slate);
+        }
+
+        strong {
+            color: var(--lightest-slate);
+        }
+    </style>
+</head>
+<body>
+    <div class="scroll-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+        ↑
+    </div>
+
+    <!-- Header -->
+    <header>
+        <div class="header-content">
+            <div class="badge">NIVEL 3 • NORMALIZACIÓN PROFESIONAL</div>
+            <h1>
+                Tercera Forma Normal
+                <span class="highlight">(3NF)</span>
+            </h1>
+            <p class="subtitle">
+                Tutorial completo con ejemplos prácticos, ejercicios interactivos y explicaciones detalladas
+            </p>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav>
+        <ul>
+            <li><a href="#definicion">Definición</a></li>
+            <li><a href="#reglas">Reglas</a></li>
+            <li><a href="#ejemplos">Ejemplos</a></li>
+            <li><a href="#proceso">Proceso</a></li>
+            <li><a href="#ejercicios">Ejercicios</a></li>
+        </ul>
+    </nav>
+
+    <!-- Definición -->
+    <section id="definicion">
+        <div class="container">
+            <h2>¿Qué es la Tercera Forma Normal?</h2>
+            
+            <div class="info-box success">
+                <div class="info-icon">DEFINICIÓN</div>
+                <p style="font-size: 1.1em; margin-top: 20px;">
+                    La <strong>Tercera Forma Normal (3NF)</strong> es el primer nivel de normalización de bases de datos. Una tabla está en 3NF cuando <strong>todos sus atributos contienen valores atómicos</strong> (indivisibles) y <strong>no hay grupos repetitivos de datos</strong>.
+                </p>
+            </div>
+
+            <h3>Objetivo Principal</h3>
+            <p>
+                La 3NF establece la estructura básica para una base de datos relacional bien organizada. Su objetivo es eliminar:
+            </p>
+
+            <ul>
+                <li><strong>Valores múltiples en una sola celda:</strong> Como tener "Rojo, Azul, Verde" en un campo de color</li>
+                <li><strong>Grupos repetitivos:</strong> Como tener columnas Teléfono1, Teléfono2, Teléfono3</li>
+                <li><strong>Datos no atómicos:</strong> Como almacenar "Nombre: Juan, Apellido: Pérez" en un solo campo</li>
+                <li><strong>Falta de clave primaria:</strong> Cada tabla debe tener un identificador único</li>
+            </ul>
+
+            <div class="info-box warning">
+                <div class="info-icon">IMPORTANTE</div>
+                <p style="margin-top: 20px;">
+                    <strong>Atomicidad</strong> significa que cada celda debe contener exactamente <strong>un solo valor</strong> del dominio de datos más simple posible. No puede dividirse más sin perder su significado.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Reglas -->
+    <section id="reglas">
+        <div class="container">
+            <h2>Reglas de la Tercera Forma Normal</h2>
+            
+            <p style="font-size: 1.1em; margin-bottom: 40px;">
+                Para que una tabla cumpla con 3NF, debe satisfacer las siguientes cuatro reglas fundamentales:
+            </p>
+
+            <div class="rules-grid">
+                <div class="rule-card">
+                    <div class="rule-number">1</div>
+                    <h3>Valores Atómicos</h3>
+                    <p>
+                        Cada columna debe contener <strong>valores indivisibles</strong>. No se permiten listas, conjuntos o valores múltiples en una sola celda.
+                    </p>
+                    <div class="code-block" style="font-size: 0.85em; margin-top: 15px;">
+<span class="comment">-- ❌ Incorrecto</span>
+Colores: <span class="string">'Rojo, Azul'</span>
+
+<span class="comment">-- ✓ Correcto</span>
+Color: <span class="string">'Rojo'</span>
+                    </div>
+                </div>
+
+                <div class="rule-card">
+                    <div class="rule-number">2</div>
+                    <h3>Sin Grupos Repetitivos</h3>
+                    <p>
+                        No debe haber <strong>columnas repetitivas</strong> del mismo tipo de dato (Ej: Tel1, Tel2, Tel3). Cada tipo de dato debe tener su propia tabla si puede repetirse.
+                    </p>
+                    <div class="code-block" style="font-size: 0.85em; margin-top: 15px;">
+<span class="comment">-- ❌ Incorrecto</span>
+Email1, Email2, Email3
+
+<span class="comment">-- ✓ Correcto</span>
+Tabla separada de Emails
+                    </div>
+                </div>
+
+                <div class="rule-card">
+                    <div class="rule-number">3</div>
+                    <h3>Clave Primaria</h3>
+                    <p>
+                        La tabla debe tener una <strong>clave primaria</strong> que identifique de forma única cada fila. Puede ser simple o compuesta.
+                    </p>
+                    <div class="code-block" style="font-size: 0.85em; margin-top: 15px;">
+<span class="keyword">PRIMARY KEY</span> (ID)
+<span class="comment">-- o --</span>
+<span class="keyword">PRIMARY KEY</span> (ID1, ID2)
+                    </div>
+                </div>
+
+                <div class="rule-card">
+                    <div class="rule-number">4</div>
+                    <h3>Orden Irrelevante</h3>
+                    <p>
+                        El orden de las filas <strong>no debe afectar</strong> el significado de los datos. Las filas deben poder reorganizarse sin perder información.
+                    </p>
+                    <div class="code-block" style="font-size: 0.85em; margin-top: 15px;">
+<span class="comment">-- Las filas son intercambiables</span>
+<span class="keyword">SELECT</span> * <span class="keyword">FROM</span> tabla
+<span class="keyword">ORDER BY</span> columna
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Ejemplos -->
+    <section id="ejemplos">
+        <div class="container">
+            <h2>Ejemplos Detallados</h2>
+
+            <!-- Ejemplo 1: Valores No Atómicos -->
+            <div class="example-box">
+                <div class="example-title">Ejemplo 1: Problema de Valores No Atómicos</div>
+                
+                <div class="comparison">
+                    <div class="table-container">
+                        <div class="table-label bad">TABLA NO NORMALIZADA (Viola 3NF)</div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>EstudianteID</th>
+                                    <th>Nombre</th>
+                                    <th>Teléfonos</th>
+                                    <th>Cursos</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td>Ana García</td>
+                                    <td class="highlight-cell">555-1234, 555-5678</td>
+                                    <td class="highlight-cell">Matemáticas, Física</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>Carlos López</td>
+                                    <td class="highlight-cell">555-9999</td>
+                                    <td class="highlight-cell">Química, Biología, Física</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="info-box error" style="margin-top: 20px;">
+                            <div class="info-icon">PROBLEMAS</div>
+                            <ul style="margin-top: 15px;">
+                                <li>Múltiples valores en celdas de Teléfonos y Cursos</li>
+                                <li>Difícil buscar un teléfono o curso específico</li>
+                                <li>Problemas al actualizar o eliminar datos</li>
+                                <li>No se pueden aplicar restricciones de integridad</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="arrow">→</div>
+
+                    <div class="table-container">
+                        <div class="table-label good">TABLA NORMALIZADA (Cumple 3NF)</div>
+                        <table style="margin-bottom: 20px;">
+                            <thead>
+                                <tr>
+                                    <th>EstudianteID</th>
+                                    <th>Nombre</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td>Ana García</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>Carlos López</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <table style="margin-bottom: 20px;">
+                            <thead>
+                                <tr>
+                                    <th>EstudianteID</th>
+                                    <th>Teléfono</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td>555-1234</td>
+                                </tr>
+                                <tr>
+                                    <td>1</td>
+                                    <td>555-5678</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>555-9999</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>EstudianteID</th>
+                                    <th>Curso</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td>Matemáticas</td>
+                                </tr>
+                                <tr>
+                                    <td>1</td>
+                                    <td>Física</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>Química</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>Biología</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>Física</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="info-box success" style="margin-top: 20px;">
+                            <div class="info-icon">BENEFICIOS</div>
+                            <ul style="margin-top: 15px;">
+                                <li>Cada celda contiene exactamente un valor</li>
+                                <li>Fácil buscar, actualizar o eliminar datos</li>
+                                <li>Se pueden aplicar restricciones de integridad</li>
+                                <li>Estructura clara y mantenible</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ejemplo 2: Grupos Repetitivos -->
+            <div class="example-box">
+                <div class="example-title">Ejemplo 2: Problema de Grupos Repetitivos</div>
+                
+                <div class="comparison">
+                    <div class="table-container">
+                        <div class="table-label bad">CON GRUPOS REPETITIVOS (Viola 3NF)</div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ClienteID</th>
+                                    <th>Nombre</th>
+                                    <th>Email1</th>
+                                    <th>Email2</th>
+                                    <th>Email3</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>101</td>
+                                    <td>Empresa ABC</td>
+                                    <td>info@abc.com</td>
+                                    <td>ventas@abc.com</td>
+                                    <td>soporte@abc.com</td>
+                                </tr>
+                                <tr>
+                                    <td>102</td>
+                                    <td>Empresa XYZ</td>
+                                    <td>contacto@xyz.com</td>
+                                    <td class="highlight-cell">NULL</td>
+                                    <td class="highlight-cell">NULL</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="info-box error" style="margin-top: 20px;">
+                            <div class="info-icon">PROBLEMAS</div>
+                            <ul style="margin-top: 15px;">
+                                <li>Límite artificial de 3 emails</li>
+                                <li>Desperdicio de espacio (valores NULL)</li>
+                                <li>Difícil consultar todos los emails</li>
+                                <li>Código complejo para manejar columnas repetitivas</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="arrow">→</div>
+
+                    <div class="table-container">
+                        <div class="table-label good">SIN GRUPOS REPETITIVOS (Cumple 3NF)</div>
+                        <table style="margin-bottom: 20px;">
+                            <thead>
+                                <tr>
+                                    <th>ClienteID</th>
+                                    <th>Nombre</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>101</td>
+                                    <td>Empresa ABC</td>
+                                </tr>
+                                <tr>
+                                    <td>102</td>
+                                    <td>Empresa XYZ</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>EmailID</th>
+                                    <th>ClienteID</th>
+                                    <th>Email</th>
+                                    <th>Tipo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td>101</td>
+                                    <td>info@abc.com</td>
+                                    <td>Principal</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>101</td>
+                                    <td>ventas@abc.com</td>
+                                    <td>Ventas</td>
+                                </tr>
+                                <tr>
+                                    <td>3</td>
+                                    <td>101</td>
+                                    <td>soporte@abc.com</td>
+                                    <td>Soporte</td>
+                                </tr>
+                                <tr>
+                                    <td>4</td>
+                                    <td>102</td>
+                                    <td>contacto@xyz.com</td>
+                                    <td>Principal</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="info-box success" style="margin-top: 20px;">
+                            <div class="info-icon">BENEFICIOS</div>
+                            <ul style="margin-top: 15px;">
+                                <li>Sin límite en cantidad de emails</li>
+                                <li>Sin valores NULL innecesarios</li>
+                                <li>Consultas simples y eficientes</li>
+                                <li>Flexibilidad para crecer</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ejemplo 3: Falta de Clave Primaria -->
+            <div class="example-box">
+                <div class="example-title">Ejemplo 3: Problema de Clave Primaria</div>
+                
+                <div class="comparison">
+                    <div class="table-container">
+                        <div class="table-label bad">SIN CLAVE PRIMARIA (Viola 3NF)</div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Ciudad</th>
+                                    <th>Email</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Juan Pérez</td>
+                                    <td>Madrid</td>
+                                    <td>juan@mail.com</td>
+                                </tr>
+                                <tr>
+                                    <td>Juan Pérez</td>
+                                    <td>Madrid</td>
+                                    <td>juan@mail.com</td>
+                                </tr>
+                                <tr>
+                                    <td>Ana Silva</td>
+                                    <td>Barcelona</td>
+                                    <td>ana@mail.com</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="info-box error" style="margin-top: 20px;">
+                            <div class="info-icon">PROBLEMAS</div>
+                            <ul style="margin-top: 15px;">
+                                <li>Filas duplicadas permitidas</li>
+                                <li>No hay forma de identificar una fila específica</li>
+                                <li>Inconsistencias en los datos</li>
+                                <li>Problemas con actualizaciones y eliminaciones</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="arrow">→</div>
+
+                    <div class="table-container">
+                        <div class="table-label good">CON CLAVE PRIMARIA (Cumple 3NF)</div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>PersonaID ⚡</th>
+                                    <th>Nombre</th>
+                                    <th>Ciudad</th>
+                                    <th>Email</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>1</strong></td>
+                                    <td>Juan Pérez</td>
+                                    <td>Madrid</td>
+                                    <td>juan@mail.com</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>2</strong></td>
+                                    <td>Ana Silva</td>
+                                    <td>Barcelona</td>
+                                    <td>ana@mail.com</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="code-block" style="margin-top: 20px;">
+<span class="keyword">CREATE TABLE</span> Personas (
+    PersonaID <span class="keyword">INT PRIMARY KEY</span>,
+    Nombre <span class="keyword">VARCHAR</span>(<span class="string">100</span>),
+    Ciudad <span class="keyword">VARCHAR</span>(<span class="string">50</span>),
+    Email <span class="keyword">VARCHAR</span>(<span class="string">100</span>)
+);
+                        </div>
+                        <div class="info-box success" style="margin-top: 20px;">
+                            <div class="info-icon">BENEFICIOS</div>
+                            <ul style="margin-top: 15px;">
+                                <li>Cada fila es única e identificable</li>
+                                <li>No hay duplicados</li>
+                                <li>Integridad referencial garantizada</li>
+                                <li>Operaciones precisas y confiables</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ejemplo 4: Datos Compuestos -->
+            <div class="example-box">
+                <div class="example-title">Ejemplo 4: Problema de Datos Compuestos</div>
+                
+                <div class="comparison">
+                    <div class="table-container">
+                        <div class="table-label bad">DATOS COMPUESTOS (Viola 3NF)</div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>EmpleadoID</th>
+                                    <th>NombreCompleto</th>
+                                    <th>Dirección</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td class="highlight-cell">García Martínez, María</td>
+                                    <td class="highlight-cell">Calle Mayor 15, Madrid, 28001</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td class="highlight-cell">López Silva, Carlos</td>
+                                    <td class="highlight-cell">Av. Diagonal 100, Barcelona, 08019</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="info-box error" style="margin-top: 20px;">
+                            <div class="info-icon">PROBLEMAS</div>
+                            <ul style="margin-top: 15px;">
+                                <li>Difícil buscar por apellido o nombre</li>
+                                <li>Difícil ordenar alfabéticamente</li>
+                                <li>No se puede filtrar por ciudad o código postal</li>
+                                <li>Formato inconsistente entre filas</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="arrow">→</div>
+
+                    <div class="table-container">
+                        <div class="table-label good">DATOS ATÓMICOS (Cumple 3NF)</div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>EmpleadoID</th>
+                                    <th>Nombre</th>
+                                    <th>Apellido1</th>
+                                    <th>Apellido2</th>
+                                    <th>Calle</th>
+                                    <th>Ciudad</th>
+                                    <th>CP</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td>María</td>
+                                    <td>García</td>
+                                    <td>Martínez</td>
+                                    <td>Calle Mayor 15</td>
+                                    <td>Madrid</td>
+                                    <td>28001</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>Carlos</td>
+                                    <td>López</td>
+                                    <td>Silva</td>
+                                    <td>Av. Diagonal 100</td>
+                                    <td>Barcelona</td>
+                                    <td>08019</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="code-block" style="margin-top: 20px;">
+<span class="comment">-- Ahora se pueden hacer consultas específicas</span>
+<span class="keyword">SELECT</span> * <span class="keyword">FROM</span> Empleados 
+<span class="keyword">WHERE</span> Ciudad = <span class="string">'Madrid'</span>;
+
+<span class="keyword">SELECT</span> * <span class="keyword">FROM</span> Empleados 
+<span class="keyword">ORDER BY</span> Apellido1, Apellido2, Nombre;
+                        </div>
+                        <div class="info-box success" style="margin-top: 20px;">
+                            <div class="info-icon">BENEFICIOS</div>
+                            <ul style="margin-top: 15px;">
+                                <li>Búsquedas precisas por cualquier campo</li>
+                                <li>Ordenamiento correcto</li>
+                                <li>Filtrado y agrupación eficientes</li>
+                                <li>Formato consistente y validable</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Proceso -->
+    <section id="proceso">
+        <div class="container">
+            <h2>Proceso Paso a Paso para Aplicar 3NF</h2>
+
+            <p style="font-size: 1.1em; margin-bottom: 40px;">
+                Sigue estos pasos sistemáticamente para convertir cualquier tabla a Tercera Forma Normal:
+            </p>
+
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h4>Identificar Valores No Atómicos</h4>
+                        <p>Revisa cada columna y busca celdas que contengan:</p>
+                        <ul>
+                            <li>Múltiples valores separados por comas o símbolos</li>
+                            <li>Listas de elementos</li>
+                            <li>Datos que pueden dividirse en partes más pequeñas</li>
+                        </ul>
+                        <div class="code-block" style="margin-top: 15px;">
+<span class="comment">-- Ejemplo de valores no atómicos</span>
+Habilidades: <span class="string">'Java, Python, SQL'</span>
+Direccion: <span class="string">'Calle 123, Ciudad, CP 12345'</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h4>Separar Valores Múltiples</h4>
+                        <p>Para cada columna con valores múltiples:</p>
+                        <ul>
+                            <li>Crear una nueva tabla relacionada</li>
+                            <li>Mover los valores múltiples a filas separadas</li>
+                            <li>Establecer relación mediante clave foránea</li>
+                        </ul>
+                        <div class="code-block" style="margin-top: 15px;">
+<span class="keyword">CREATE TABLE</span> Empleado_Habilidades (
+    EmpleadoID <span class="keyword">INT</span>,
+    Habilidad <span class="keyword">VARCHAR</span>(<span class="string">50</span>),
+    <span class="keyword">PRIMARY KEY</span> (EmpleadoID, Habilidad),
+    <span class="keyword">FOREIGN KEY</span> (EmpleadoID) 
+        <span class="keyword">REFERENCES</span> Empleados(EmpleadoID)
+);
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h4>Eliminar Grupos Repetitivos</h4>
+                        <p>Busca columnas con sufijos numéricos (Tel1, Tel2, Email1, Email2):</p>
+                        <ul>
+                            <li>Identificar todas las columnas del mismo tipo</li>
+                            <li>Crear tabla separada para estos datos</li>
+                            <li>Cada valor va en su propia fila</li>
+                        </ul>
+                        <div class="code-block" style="margin-top: 15px;">
+<span class="comment">-- En lugar de: Tel1, Tel2, Tel3</span>
+<span class="keyword">CREATE TABLE</span> Telefonos (
+    TelefonoID <span class="keyword">INT PRIMARY KEY</span>,
+    ClienteID <span class="keyword">INT</span>,
+    Numero <span class="keyword">VARCHAR</span>(<span class="string">15</span>),
+    Tipo <span class="keyword">VARCHAR</span>(<span class="string">20</span>),
+    <span class="keyword">FOREIGN KEY</span> (ClienteID) 
+        <span class="keyword">REFERENCES</span> Clientes(ClienteID)
+);
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h4>Atomizar Datos Compuestos</h4>
+                        <p>Divide los campos compuestos en columnas individuales:</p>
+                        <ul>
+                            <li>NombreCompleto → Nombre, Apellido1, Apellido2</li>
+                            <li>Dirección → Calle, Ciudad, CodigoPostal</li>
+                            <li>FechaHora → Fecha, Hora</li>
+                        </ul>
+                        <div class="code-block" style="margin-top: 15px;">
+<span class="comment">-- Separar datos compuestos</span>
+<span class="keyword">CREATE TABLE</span> Personas (
+    PersonaID <span class="keyword">INT PRIMARY KEY</span>,
+    Nombre <span class="keyword">VARCHAR</span>(<span class="string">50</span>),
+    PrimerApellido <span class="keyword">VARCHAR</span>(<span class="string">50</span>),
+    SegundoApellido <span class="keyword">VARCHAR</span>(<span class="string">50</span>)
+);
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <h4>Definir Clave Primaria</h4>
+                        <p>Asegúrate de que cada tabla tenga una clave primaria:</p>
+                        <ul>
+                            <li>Puede ser un identificador autoincremental (ID)</li>
+                            <li>Puede ser una clave natural existente</li>
+                            <li>Puede ser una clave compuesta de varias columnas</li>
+                        </ul>
+                        <div class="code-block" style="margin-top: 15px;">
+<span class="comment">-- Clave primaria simple</span>
+ProductoID <span class="keyword">INT PRIMARY KEY AUTO_INCREMENT</span>
+
+<span class="comment">-- Clave primaria compuesta</span>
+<span class="keyword">PRIMARY KEY</span> (EstudianteID, CursoID)
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">6</div>
+                    <div class="step-content">
+                        <h4>Verificar y Documentar</h4>
+                        <p>Verifica que la tabla cumpla con todos los requisitos:</p>
+                        <ul>
+                            <li>✓ Todos los valores son atómicos</li>
+                            <li>✓ No hay grupos repetitivos</li>
+                            <li>✓ Existe clave primaria</li>
+                            <li>✓ El orden de filas es irrelevante</li>
+                        </ul>
+                        <p style="margin-top: 10px;">Documenta las relaciones entre tablas para referencia futura.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-box warning">
+                <div class="info-icon">CONSEJO</div>
+                <p style="margin-top: 20px;">
+                    <strong>Equilibrio es clave:</strong> No todo dato debe atomizarse al extremo. Por ejemplo, "NombreCompleto" podría mantenerse junto si nunca se necesita buscar por nombre o apellido por separado. Analiza los requisitos de tu aplicación antes de decidir el nivel de atomicidad.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Ejercicios -->
+    <section id="ejercicios">
+        <div class="container">
+            <h2>Ejercicios Prácticos</h2>
+
+            <p style="font-size: 1.1em; margin-bottom: 40px;">
+                Pon a prueba tu comprensión de 3NF con estos ejercicios. Haz clic en "Ver Respuesta" para verificar tu solución.
+            </p>
+
+            <!-- Ejercicio 1 -->
+            <div class="exercise">
+                <div class="exercise-header">
+                    <div class="exercise-number">1</div>
+                    <h3>Biblioteca de Libros</h3>
+                </div>
+
+                <div class="exercise-question">
+                    <p><strong>Situación:</strong> Tienes la siguiente tabla de una biblioteca:</p>
+                    <table style="margin-top: 15px;">
+                        <thead>
+                            <tr>
+                                <th>LibroID</th>
+                                <th>Título</th>
+                                <th>Autores</th>
+                                <th>ISBN</th>
+                                <th>Géneros</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>Cien Años de Soledad</td>
+                                <td>Gabriel García Márquez</td>
+                                <td>978-0307474728</td>
+                                <td>Ficción, Realismo mágico</td>
+                            </tr>
+                            <tr>
+                                <td>2</td>
+                                <td>Good Omens</td>
+                                <td>Neil Gaiman, Terry Pratchett</td>
+                                <td>978-0060853983</td>
+                                <td>Fantasía, Comedia</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p style="margin-top: 20px;"><strong>Tarea:</strong> Normaliza esta tabla a 3NF. Identifica las violaciones y propón una solución.</p>
+                </div>
+
+                <button class="show-answer-btn" onclick="toggleAnswer('answer1')">Ver Respuesta</button>
+
+                <div id="answer1" class="answer-section">
+                    <h4 style="color: var(--green); margin-bottom: 15px;">Solución:</h4>
+                    
+                    <p><strong>Violaciones identificadas:</strong></p>
+                    <ul>
+                        <li>Columna "Autores" contiene múltiples valores</li>
+                        <li>Columna "Géneros" contiene múltiples valores</li>
+                    </ul>
+
+                    <p style="margin-top: 20px;"><strong>Solución Normalizada:</strong></p>
+
+                    <div class="table-container" style="margin-top: 15px;">
+                        <strong>Tabla: Libros</strong>
+                        <table style="margin-top: 10px;">
+                            <thead>
+                                <tr>
+                                    <th>LibroID</th>
+                                    <th>Título</th>
+                                    <th>ISBN</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td>Cien Años de Soledad</td>
+                                    <td>978-0307474728</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>Good Omens</td>
+                                    <td>978-0060853983</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="table-container">
+                        <strong>Tabla: Libro_Autores</strong>
+                        <table style="margin-top: 10px;">
+                            <thead>
+                                <tr>
+                                    <th>LibroID</th>
+                                    <th>Autor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td>Gabriel García Márquez</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>Neil Gaiman</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>Terry Pratchett</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="table-container">
+                        <strong>Tabla: Libro_Generos</strong>
+                        <table style="margin-top: 10px;">
+                            <thead>
+                                <tr>
+                                    <th>LibroID</th>
+                                    <th>Género</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td>Ficción</td>
+                                </tr>
+                                <tr>
+                                    <td>1</td>
+                                    <td>Realismo mágico</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>Fantasía</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>Comedia</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="code-block">
+<span class="keyword">CREATE TABLE</span> Libros (
+    LibroID <span class="keyword">INT PRIMARY KEY</span>,
+    Titulo <span class="keyword">VARCHAR</span>(<span class="string">200</span>),
+    ISBN <span class="keyword">VARCHAR</span>(<span class="string">20</span>)
+);
+
+<span class="keyword">CREATE TABLE</span> Libro_Autores (
+    LibroID <span class="keyword">INT</span>,
+    Autor <span class="keyword">VARCHAR</span>(<span class="string">100</span>),
+    <span class="keyword">PRIMARY KEY</span> (LibroID, Autor),
+    <span class="keyword">FOREIGN KEY</span> (LibroID) <span class="keyword">REFERENCES</span> Libros(LibroID)
+);
+
+<span class="keyword">CREATE TABLE</span> Libro_Generos (
+    LibroID <span class="keyword">INT</span>,
+    Genero <span class="keyword">VARCHAR</span>(<span class="string">50</span>),
+    <span class="keyword">PRIMARY KEY</span> (LibroID, Genero),
+    <span class="keyword">FOREIGN KEY</span> (LibroID) <span class="keyword">REFERENCES</span> Libros(LibroID)
+);
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ejercicio 2 -->
+            <div class="exercise">
+                <div class="exercise-header">
+                    <div class="exercise-number">2</div>
+                    <h3>Sistema de Pedidos</h3>
+                </div>
+
+                <div class="exercise-question">
+                    <p><strong>Situación:</strong> Una tienda online tiene la siguiente tabla de pedidos:</p>
+                    <table style="margin-top: 15px;">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Dirección</th>
+                                <th>Producto1</th>
+                                <th>Cantidad1</th>
+                                <th>Producto2</th>
+                                <th>Cantidad2</th>
+                                <th>Producto3</th>
+                                <th>Cantidad3</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Juan López</td>
+                                <td>Calle 123, Madrid, 28001</td>
+                                <td>Laptop</td>
+                                <td>1</td>
+                                <td>Mouse</td>
+                                <td>2</td>
+                                <td>NULL</td>
+                                <td>NULL</td>
+                            </tr>
+                            <tr>
+                                <td>Ana García</td>
+                                <td>Av. Principal 45, Barcelona, 08001</td>
+                                <td>Teclado</td>
+                                <td>1</td>
+                                <td>NULL</td>
+                                <td>NULL</td>
+                                <td>NULL</td>
+                                <td>NULL</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p style="margin-top: 20px;"><strong>Tarea:</strong> Identifica TODAS las violaciones de 3NF y normaliza completamente la tabla.</p>
+                </div>
+
+                <button class="show-answer-btn" onclick="toggleAnswer('answer2')">Ver Respuesta</button>
+
+                <div id="answer2" class="answer-section">
+                    <h4 style="color: var(--green); margin-bottom: 15px;">Solución:</h4>
+                    
+                    <p><strong>Violaciones identificadas:</strong></p>
+                    <ul>
+                        <li>No hay clave primaria</li>
+                        <li>Grupos repetitivos: Producto1/Cantidad1, Producto2/Cantidad2, Producto3/Cantidad3</li>
+                        <li>Columna "Dirección" contiene datos compuestos (Calle, Ciudad, CP)</li>
+                        <li>Columna "Cliente" podría separarse en Nombre y Apellido</li>
+                        <li>Múltiples valores NULL por límite artificial de productos</li>
+                    </ul>
+
+                    <p style="margin-top: 20px;"><strong>Solución Normalizada:</strong></p>
+
+                    <div class="table-container" style="margin-top: 15px;">
+                        <strong>Tabla: Clientes</strong>
+                        <table style="margin-top: 10px;">
+                            <thead>
+                                <tr>
+                                    <th>ClienteID</th>
+                                    <th>Nombre</th>
+                                    <th>Apellido</th>
+                                    <th>Calle</th>
+                                    <th>Ciudad</th>
+                                    <th>CodigoPostal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td>Juan</td>
+                                    <td>López</td>
+                                    <td>Calle 123</td>
+                                    <td>Madrid</td>
+                                    <td>28001</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>Ana</td>
+                                    <td>García</td>
+                                    <td>Av. Principal 45</td>
+                                    <td>Barcelona</td>
+                                    <td>08001</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="table-container">
+                        <strong>Tabla: Pedidos</strong>
+                        <table style="margin-top: 10px;">
+                            <thead>
+                                <tr>
+                                    <th>PedidoID</th>
+                                    <th>ClienteID</th>
+                                    <th>FechaPedido</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>100</td>
+                                    <td>1</td>
+                                    <td>2025-01-15</td>
+                                </tr>
+                                <tr>
+                                    <td>101</td>
+                                    <td>2</td>
+                                    <td>2025-01-16</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="table-container">
+                        <strong>Tabla: DetallesPedido</strong>
+                        <table style="margin-top: 10px;">
+                            <thead>
+                                <tr>
+                                    <th>DetalleID</th>
+                                    <th>PedidoID</th>
+                                    <th>Producto</th>
+                                    <th>Cantidad</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td>100</td>
+                                    <td>Laptop</td>
+                                    <td>1</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>100</td>
+                                    <td>Mouse</td>
+                                    <td>2</td>
+                                </tr>
+                                <tr>
+                                    <td>3</td>
+                                    <td>101</td>
+                                    <td>Teclado</td>
+                                    <td>1</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="code-block">
+<span class="keyword">CREATE TABLE</span> Clientes (
+    ClienteID <span class="keyword">INT PRIMARY KEY AUTO_INCREMENT</span>,
+    Nombre <span class="keyword">VARCHAR</span>(<span class="string">50</span>),
+    Apellido <span class="keyword">VARCHAR</span>(<span class="string">50</span>),
+    Calle <span class="keyword">VARCHAR</span>(<span class="string">100</span>),
+    Ciudad <span class="keyword">VARCHAR</span>(<span class="string">50</span>),
+    CodigoPostal <span class="keyword">VARCHAR</span>(<span class="string">10</span>)
+);
+
+<span class="keyword">CREATE TABLE</span> Pedidos (
+    PedidoID <span class="keyword">INT PRIMARY KEY AUTO_INCREMENT</span>,
+    ClienteID <span class="keyword">INT</span>,
+    FechaPedido <span class="keyword">DATE</span>,
+    <span class="keyword">FOREIGN KEY</span> (ClienteID) <span class="keyword">REFERENCES</span> Clientes(ClienteID)
+);
+
+<span class="keyword">CREATE TABLE</span> DetallesPedido (
+    DetalleID <span class="keyword">INT PRIMARY KEY AUTO_INCREMENT</span>,
+    PedidoID <span class="keyword">INT</span>,
+    Producto <span class="keyword">VARCHAR</span>(<span class="string">100</span>),
+    Cantidad <span class="keyword">INT</span>,
+    <span class="keyword">FOREIGN KEY</span> (PedidoID) <span class="keyword">REFERENCES</span> Pedidos(PedidoID)
+);
+                    </div>
+
+                    <div class="info-box success" style="margin-top: 20px;">
+                        <div class="info-icon">BENEFICIOS</div>
+                        <ul style="margin-top: 15px;">
+                            <li>Sin límite en número de productos por pedido</li>
+                            <li>Sin valores NULL innecesarios</li>
+                            <li>Búsquedas eficientes por ciudad, código postal, etc.</li>
+                            <li>Estructura flexible y escalable</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ejercicio 3 -->
+            <div class="exercise">
+                <div class="exercise-header">
+                    <div class="exercise-number">3</div>
+                    <h3>Registro de Empleados</h3>
+                </div>
+
+                <div class="exercise-question">
+                    <p><strong>Situación:</strong> Una empresa tiene esta tabla de empleados:</p>
+                    <table style="margin-top: 15px;">
+                        <thead>
+                            <tr>
+                                <th>NombreCompleto</th>
+                                <th>Departamento</th>
+                                <th>Habilidades</th>
+                                <th>CertificacionesYFechas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>García López, María</td>
+                                <td>IT</td>
+                                <td>Java, Python, SQL, Docker</td>
+                                <td>AWS (2023), Azure (2024)</td>
+                            </tr>
+                            <tr>
+                                <td>Martínez Ruiz, Carlos</td>
+                                <td>Ventas</td>
+                                <td>Negociación, CRM</td>
+                                <td>Salesforce (2022)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p style="margin-top: 20px;"><strong>Tarea:</strong> Normaliza esta tabla a 3NF. Presta atención a TODOS los tipos de violaciones.</p>
+                </div>
+
+                <button class="show-answer-btn" onclick="toggleAnswer('answer3')">Ver Respuesta</button>
+
+                <div id="answer3" class="answer-section">
+                    <h4 style="color: var(--green); margin-bottom: 15px;">Solución:</h4>
+                    
+                    <p><strong>Violaciones identificadas:</strong></p>
+                    <ul>
+                        <li>No hay clave primaria</li>
+                        <li>"NombreCompleto" es un dato compuesto (Apellido1, Apellido2, Nombre)</li>
+                        <li>"Habilidades" contiene múltiples valores</li>
+                        <li>"CertificacionesYFechas" contiene datos compuestos Y múltiples valores</li>
+                    </ul>
+
+                    <p style="margin-top: 20px;"><strong>Solución Normalizada:</strong></p>
+
+                    <div class="table-container" style="margin-top: 15px;">
+                        <strong>Tabla: Empleados</strong>
+                        <table style="margin-top: 10px;">
+                            <thead>
+                                <tr>
+                                    <th>EmpleadoID</th>
+                                    <th>Nombre</th>
+                                    <th>PrimerApellido</th>
+                                    <th>SegundoApellido</th>
+                                    <th>Departamento</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td>María</td>
+                                    <td>García</td>
+                                    <td>López</td>
+                                    <td>IT</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>Carlos</td>
+                                    <td>Martínez</td>
+                                    <td>Ruiz</td>
+                                    <td>Ventas</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="table-container">
+                        <strong>Tabla: Empleado_Habilidades</strong>
+                        <table style="margin-top: 10px;">
+                            <thead>
+                                <tr>
+                                    <th>EmpleadoID</th>
+                                    <th>Habilidad</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td>Java</td>
+                                </tr>
+                                <tr>
+                                    <td>1</td>
+                                    <td>Python</td>
+                                </tr>
+                                <tr>
+                                    <td>1</td>
+                                    <td>SQL</td>
+                                </tr>
+                                <tr>
+                                    <td>1</td>
+                                    <td>Docker</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>Negociación</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>CRM</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="table-container">
+                        <strong>Tabla: Empleado_Certificaciones</strong>
+                        <table style="margin-top: 10px;">
+                            <thead>
+                                <tr>
+                                    <th>CertificacionID</th>
+                                    <th>EmpleadoID</th>
+                                    <th>Certificacion</th>
+                                    <th>AñoObtencion</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td>1</td>
+                                    <td>AWS</td>
+                                    <td>2023</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>1</td>
+                                    <td>Azure</td>
+                                    <td>2024</td>
+                                </tr>
+                                <tr>
+                                    <td>3</td>
+                                    <td>2</td>
+                                    <td>Salesforce</td>
+                                    <td>2022</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="code-block">
+<span class="keyword">CREATE TABLE</span> Empleados (
+    EmpleadoID <span class="keyword">INT PRIMARY KEY AUTO_INCREMENT</span>,
+    Nombre <span class="keyword">VARCHAR</span>(<span class="string">50</span>),
+    PrimerApellido <span class="keyword">VARCHAR</span>(<span class="string">50</span>),
+    SegundoApellido <span class="keyword">VARCHAR</span>(<span class="string">50</span>),
+    Departamento <span class="keyword">VARCHAR</span>(<span class="string">50</span>)
+);
+
+<span class="keyword">CREATE TABLE</span> Empleado_Habilidades (
+    EmpleadoID <span class="keyword">INT</span>,
+    Habilidad <span class="keyword">VARCHAR</span>(<span class="string">50</span>),
+    <span class="keyword">PRIMARY KEY</span> (EmpleadoID, Habilidad),
+    <span class="keyword">FOREIGN KEY</span> (EmpleadoID) <span class="keyword">REFERENCES</span> Empleados(EmpleadoID)
+);
+
+<span class="keyword">CREATE TABLE</span> Empleado_Certificaciones (
+    CertificacionID <span class="keyword">INT PRIMARY KEY AUTO_INCREMENT</span>,
+    EmpleadoID <span class="keyword">INT</span>,
+    Certificacion <span class="keyword">VARCHAR</span>(<span class="string">100</span>),
+    AñoObtencion <span class="keyword">INT</span>,
+    <span class="keyword">FOREIGN KEY</span> (EmpleadoID) <span class="keyword">REFERENCES</span> Empleados(EmpleadoID)
+);
+                    </div>
+
+                    <div class="info-box success" style="margin-top: 20px;">
+                        <div class="info-icon">PUNTOS CLAVE</div>
+                        <ul style="margin-top: 15px;">
+                            <li>Los datos compuestos se separaron en campos individuales</li>
+                            <li>Los valores múltiples se movieron a tablas relacionadas</li>
+                            <li>Las certificaciones incluyen ahora el año como campo separado</li>
+                            <li>Estructura permite consultas y análisis flexibles</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <p class="footer-note">// FIN DEL TUTORIAL 3NF</p>
+                <p style="color: var(--light-slate); margin-top: 20px;">
+                    Has completado el tutorial de Tercera Forma Normal. Ahora estás preparado para comenzar a diseñar bases de datos relacionales correctamente estructuradas.
+                </p>
+                <p style="color: var(--slate); margin-top: 30px; font-size: 0.9em;">
+                    Siguiente paso: <span style="color: var(--green);">Segunda Forma Normal (2NF)</span>
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Toggle answer visibility
+        function toggleAnswer(answerId) {
+            const answer = document.getElementById(answerId);
+            const button = event.target;
+            
+            if (answer.classList.contains('show')) {
+                answer.classList.remove('show');
+                button.textContent = 'Ver Respuesta';
+            } else {
+                answer.classList.add('show');
+                button.textContent = 'Ocultar Respuesta';
+            }
+        }
+
+        // Scroll to top button
+        window.addEventListener('scroll', () => {
+            const scrollTop = document.querySelector('.scroll-top');
+            if (window.scrollY > 500) {
+                scrollTop.classList.add('show');
+            } else {
+                scrollTop.classList.remove('show');
+            }
+        });
+
+        // Smooth scroll for navigation
+        document.querySelectorAll('nav a').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                const target = document.querySelector(targetId);
+                
+                if (target) {
+                    window.scrollTo({
+                        top: target.offsetTop - 100,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+
+        // Animate elements on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.rule-card, .step, .exercise, .example-box').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(30px)';
+            el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>

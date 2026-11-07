@@ -1,0 +1,1877 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BD·107 El ciclo CRUD en PostgreSQL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600;700&family=Public+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+ color-scheme:light;
+ --paper:#edf2f6;--card:#ffffff;--ink:#10202e;--ink-soft:#4a5f71;--line:#c6d4df;
+ --pg:#336791;--pg-deep:#1d4a70;--pg-tint:#dce9f4;
+ --amber:#ffb63d;--amber-ink:#7a4500;--amber-tint:#fff1d5;
+ --ok:#1a7c4f;--ok-tint:#ddf2e6;--bad:#c23a2b;--bad-tint:#fde5e1;
+ --term:#11222f;--term-2:#182e3e;--term-ink:#d8e5ef;--term-dim:#7f97aa;--t-k:#86bdf0;--t-s:#ffcb7d;--t-n:#9fe5b8;--t-c:#6d8699;--t-q:#f3a3ff;--t-err:#ff8f7d;--t-ok:#93e3b5;--t-warn:#ffd27a;
+ --shadow:6px 6px 0 rgba(16,32,46,.17);--shadow-sm:3px 3px 0 rgba(16,32,46,.17);
+ --display:'Bricolage Grotesque','Arial Black',system-ui,sans-serif;
+ --body:'Public Sans','Segoe UI',system-ui,sans-serif;
+ --mono:'JetBrains Mono',ui-monospace,'Cascadia Mono','Courier New',monospace;
+ box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+ color-scheme:dark;
+ --paper:#0d1822;--card:#14232f;--ink:#e2ecf3;--ink-soft:#9bb0c1;--line:#29404f;
+ --pg:#79acd9;--pg-deep:#a9cdee;--pg-tint:#183247;
+ --amber:#ffc35e;--amber-ink:#ffd796;--amber-tint:#3a2b10;
+ --ok:#56c98f;--ok-tint:#123326;--bad:#ff7d6b;--bad-tint:#3d1a15;
+ --term:#09131b;--term-2:#0f1e29;
+ --shadow:6px 6px 0 rgba(0,0,0,.5);--shadow-sm:3px 3px 0 rgba(0,0,0,.5);
+}}
+:root[data-theme="dark"]{
+ color-scheme:dark;
+ --paper:#0d1822;--card:#14232f;--ink:#e2ecf3;--ink-soft:#9bb0c1;--line:#29404f;
+ --pg:#79acd9;--pg-deep:#a9cdee;--pg-tint:#183247;
+ --amber:#ffc35e;--amber-ink:#ffd796;--amber-tint:#3a2b10;
+ --ok:#56c98f;--ok-tint:#123326;--bad:#ff7d6b;--bad-tint:#3d1a15;
+ --term:#09131b;--term-2:#0f1e29;
+ --shadow:6px 6px 0 rgba(0,0,0,.5);--shadow-sm:3px 3px 0 rgba(0,0,0,.5);
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:calc(env(safe-area-inset-top,0px) + 76px);-webkit-text-size-adjust:100%}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 17px/1.62 var(--body)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:60;background:var(--card)}
+img,svg{max-width:100%}
+a{color:var(--pg)}
+:focus-visible{outline:3px solid var(--amber);outline-offset:2px;border-radius:4px}
+.skip{position:absolute;left:-999px;top:8px;background:var(--amber);color:#1b1200;padding:8px 14px;z-index:99;font-weight:700}
+.skip:focus{left:8px}
+h1,h2,h3{font-family:var(--display);line-height:1.08;letter-spacing:-.015em;margin:0}
+h2{font-size:clamp(1.7rem,4.2vw,2.5rem);font-weight:800}
+h3{font-size:1.28rem;font-weight:800;margin:2.2rem 0 .6rem}
+p{margin:.7rem 0}
+code{font-family:var(--mono);font-size:.86em;background:var(--pg-tint);color:var(--pg-deep);padding:.1em .38em;border-radius:5px}
+.wrap{width:min(100% - 32px,880px);margin-inline:auto}
+.wide{width:min(100% - 32px,1180px);margin-inline:auto}
+.btn{display:inline-flex;align-items:center;gap:.45em;font:700 .95rem/1 var(--body);padding:.78em 1.1em;border-radius:9px;border:2px solid var(--ink);background:var(--card);color:var(--ink);cursor:pointer;text-decoration:none;box-shadow:var(--shadow-sm);transition:transform .08s,box-shadow .08s}
+.btn:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 rgba(16,32,46,.22)}
+.btn:active{transform:translate(2px,2px);box-shadow:none}
+.btn.primary{background:var(--pg);border-color:var(--pg);color:#fff}
+:root[data-theme="dark"] .btn.primary{color:#08131c}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn.primary{color:#08131c}}
+.btn.amber{background:var(--amber);border-color:var(--amber);color:#1b1200}
+.btn.small{font-size:.82rem;padding:.55em .8em;box-shadow:none}
+.btn.ghost{box-shadow:none;border-color:var(--line)}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;background:var(--card);border-bottom:2px solid var(--ink)}
+.top-in{display:flex;align-items:center;gap:14px;height:58px}
+.brand{display:flex;align-items:center;gap:10px;font:800 1.05rem/1 var(--display);color:var(--ink);text-decoration:none;white-space:nowrap}
+.brand .elef{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:var(--pg);color:#fff;font-size:1.1rem}
+.nav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0;mask-image:linear-gradient(90deg,#000 88%,transparent)}
+.nav::-webkit-scrollbar{display:none}
+.nav a{white-space:nowrap;text-decoration:none;color:var(--ink-soft);font-weight:600;font-size:.88rem;padding:7px 10px;border-radius:7px}
+.nav a:hover{background:var(--pg-tint);color:var(--ink)}
+.nav a.on{background:var(--ink);color:var(--card)}
+.prog{white-space:nowrap;font:600 .78rem/1.2 var(--mono);color:var(--ink-soft);border:1.5px solid var(--line);border-radius:999px;padding:5px 10px}
+@media (max-width:720px){.prog{display:none}.brand span.t{display:none}}
+
+/* hero */
+.hero{padding:44px 0 56px;border-bottom:2px solid var(--ink);background:
+ radial-gradient(circle at 1px 1px,rgba(51,103,145,.16) 1px,transparent 0) 0 0/22px 22px,var(--paper)}
+.hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:40px;align-items:center}
+@media (max-width:900px){.hero-grid{grid-template-columns:1fr}}
+.path{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:26px}
+.path span{font:600 .74rem/1 var(--mono);padding:6px 8px;border-radius:6px;border:1.5px solid var(--line);color:var(--ink-soft);background:var(--card)}
+.path span.done{color:var(--ok);border-color:currentColor}
+.path span.here{background:var(--amber);border-color:var(--ink);color:#1b1200}
+.hero h1{font-size:clamp(2.6rem,7vw,4.6rem);font-weight:800;letter-spacing:-.03em}
+.hero h1 .l2{display:block;color:var(--pg)}
+.lead{font-size:1.14rem;color:var(--ink-soft);max-width:34em;margin:18px 0 22px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:26px}
+.chips span{font-size:.86rem;font-weight:600;background:var(--card);border:1.5px solid var(--ink);border-radius:999px;padding:5px 12px}
+.cta{display:flex;flex-wrap:wrap;gap:12px}
+
+/* terminal */
+.term{background:var(--term);color:var(--term-ink);border-radius:12px;border:2px solid var(--ink);box-shadow:var(--shadow);overflow:hidden;font:400 .86rem/1.6 var(--mono)}
+.term-bar{display:flex;align-items:center;gap:7px;padding:9px 12px;background:var(--term-2);color:var(--term-dim);font-size:.76rem}
+.term-bar i{width:11px;height:11px;border-radius:50%;background:#ff6d5a;display:inline-block}
+.term-bar i:nth-child(2){background:#ffb63d}.term-bar i:nth-child(3){background:#45c48a}
+.term-bar b{margin-left:8px;font-weight:600}
+.term pre{margin:0;padding:14px 16px 16px;overflow-x:auto;white-space:pre;font:inherit}
+.pr{color:var(--t-n);font-weight:600}
+.k{color:var(--t-k);font-weight:600}.s{color:var(--t-s)}.n{color:var(--t-n)}.c{color:var(--t-c);font-style:italic}.q{color:var(--t-q)}
+.dim{color:var(--term-dim)}
+.cur{display:inline-block;width:.6em;height:1.1em;background:var(--t-n);vertical-align:-.2em;animation:blink 1.1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* sections */
+section.unit{padding:64px 0 24px}
+.u-head{display:flex;gap:18px;align-items:flex-start;margin-bottom:18px}
+.u-num{flex:none;font:800 1.05rem/1 var(--mono);background:var(--ink);color:var(--paper);border-radius:10px;padding:10px 11px;margin-top:4px}
+.u-time{display:inline-block;margin-top:8px;font-size:.85rem;color:var(--ink-soft);font-weight:600}
+.road{list-style:none;padding:0;margin:22px 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.road li a{display:block;height:100%;text-decoration:none;color:var(--ink);background:var(--card);border:2px solid var(--ink);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow-sm)}
+.road li a:hover{background:var(--pg-tint)}
+.road b{font:800 .8rem/1 var(--mono);color:var(--pg)}
+.road strong{display:block;font:800 1.08rem/1.2 var(--display);margin:6px 0 4px}
+.road span{font-size:.9rem;color:var(--ink-soft)}
+
+.crud{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:22px 0}
+@media (max-width:600px){.crud{grid-template-columns:repeat(2,1fr)}}
+.crud div{background:var(--card);border:2px solid var(--ink);border-radius:12px;padding:12px 14px 14px;box-shadow:var(--shadow-sm)}
+.crud b{display:block;font:800 3.2rem/1 var(--display);color:var(--pg)}
+.crud span{display:block;font-weight:700}
+.crud code{display:inline-block;margin-top:6px}
+
+table.t{width:100%;border-collapse:collapse;font-size:.95rem;background:var(--card)}
+.tw{overflow-x:auto;border:2px solid var(--ink);border-radius:12px;margin:16px 0;box-shadow:var(--shadow-sm);background:var(--card)}
+table.t th,table.t td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+table.t th{background:var(--pg-tint);font-weight:700;font-size:.88rem}
+table.t tr:last-child td{border-bottom:0}
+
+.code{margin:16px 0 20px;border:2px solid var(--ink);border-radius:12px;overflow:hidden;box-shadow:var(--shadow-sm);background:var(--term)}
+.code-bar{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 8px 7px 14px;background:var(--term-2);color:var(--term-dim);font:600 .78rem/1 var(--mono)}
+.code-bar .try{font:700 .76rem/1 var(--body);background:var(--amber);color:#1b1200;border:0;border-radius:6px;padding:7px 10px;cursor:pointer;white-space:nowrap}
+.code-bar .try:hover{filter:brightness(1.07)}
+.code pre{margin:0;padding:14px 16px;overflow-x:auto;color:var(--term-ink);font:400 .86rem/1.6 var(--mono)}
+.out{font:600 .82rem/1.55 var(--mono);padding:9px 16px;border-top:1px dashed #2c4558;color:var(--t-ok);white-space:pre-wrap;overflow-wrap:anywhere}
+.out.err{color:var(--t-err)}
+.out.warn{color:var(--t-warn)}
+
+.call{border:2px solid var(--ink);border-radius:12px;padding:14px 18px;margin:18px 0;background:var(--card);box-shadow:var(--shadow-sm)}
+.call>strong{display:block;font:800 1.02rem/1.25 var(--display);margin-bottom:2px}
+.call p:last-child{margin-bottom:0}
+.call.info{background:var(--pg-tint)}
+.call.danger{background:var(--bad-tint);border-color:var(--bad)}
+.call.ss{background:var(--amber-tint);border-style:dashed}
+
+/* lab */
+#lab{padding:70px 0 40px;background:var(--card);border-block:2px solid var(--ink);margin-top:56px}
+.lab-head{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;margin-bottom:18px}
+.lab-head p{max-width:46em;color:var(--ink-soft);margin:.5rem 0 0}
+.retos{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 8px;margin-bottom:12px}
+.retos button{flex:none;font:700 .88rem/1 var(--body);padding:10px 13px;border-radius:9px;border:2px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer}
+.retos button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--card)}
+.retos button .ok{color:var(--ok);margin-left:4px}
+.retos button[aria-pressed="true"] .ok{color:var(--t-n)}
+.lab-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:960px){.lab-grid{grid-template-columns:1fr}}
+.panel{border:2px solid var(--ink);border-radius:12px;overflow:hidden;box-shadow:var(--shadow-sm);background:var(--card)}
+.panel-h{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;border-bottom:2px solid var(--ink);background:var(--paper);font:800 .95rem/1.2 var(--display)}
+.edwrap{display:grid;background:var(--term);max-height:340px;overflow:auto}
+.edwrap>*{grid-area:1/1;margin:0;padding:14px 16px;font:400 15px/1.6 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;tab-size:2;border:0;min-height:190px}
+.edwrap pre{color:var(--term-ink);pointer-events:none}
+.edwrap textarea{resize:none;background:transparent;color:transparent;caret-color:#fff;outline:none;overflow:hidden}
+.edwrap textarea::placeholder{color:var(--term-dim)}
+.edwrap textarea::selection{background:rgba(134,189,240,.35);color:transparent}
+.edwrap:focus-within{box-shadow:inset 0 0 0 3px var(--amber)}
+@media (max-width:600px){.edwrap>*{font-size:16px}}
+.ed-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;border-top:2px solid var(--ink);background:var(--paper)}
+.ed-bar .hint{font-size:.8rem;color:var(--ink-soft);margin-left:auto}
+.txstate{font:600 .78rem/1.2 var(--mono);padding:5px 9px;border-radius:999px;border:1.5px solid var(--line);color:var(--ink-soft);background:var(--card)}
+.txstate.open{border-color:var(--amber);background:var(--amber-tint);color:var(--amber-ink)}
+.txstate.abort{border-color:var(--bad);background:var(--bad-tint);color:var(--bad)}
+.con{background:var(--term);color:var(--term-ink);font:400 .83rem/1.55 var(--mono);height:360px;overflow:auto;padding:12px 14px;border-top:2px solid var(--ink)}
+@media (max-width:960px){.con{height:300px}}
+.con .blk{margin-bottom:12px}
+.con pre{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:inherit}
+.con .tag{color:var(--t-ok);font-weight:600}
+.con .rows{color:var(--term-dim)}
+.con .e{color:var(--t-err)}
+.con .e b{font-weight:700}
+.con .d{color:#e7b7ae}
+.con .w{color:var(--t-warn)}
+.con .nt{color:var(--t-k)}
+.con .tip{margin-top:6px;padding:7px 10px;border-left:3px solid var(--amber);background:rgba(255,182,61,.09);color:#ffe2b0;font-family:var(--body);font-size:.84rem;line-height:1.45}
+.con .tip.info{border-color:var(--t-k);background:rgba(134,189,240,.08);color:#cfe5f8}
+.con .tip.warn{border-color:var(--t-err);background:rgba(255,143,125,.1);color:#ffd2c9}
+.con table{border-collapse:collapse;margin:4px 0 2px;font:inherit}
+.con th{color:var(--t-k);font-weight:600;text-align:left;padding:1px 12px 1px 0;border-bottom:1px solid #35516a}
+.con td{padding:1px 12px 1px 0;vertical-align:top}
+.con td.num{text-align:right}
+.con .ttl{color:var(--term-dim)}
+.side{display:grid;gap:18px}
+.checks{list-style:none;margin:0;padding:10px 12px 12px}
+.checks li{display:grid;grid-template-columns:26px 1fr;gap:6px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:.93rem;line-height:1.4}
+.checks li:last-child{border-bottom:0}
+.checks .m{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;border:2px solid var(--line);font-size:.75rem;font-weight:800;color:transparent}
+.checks li.ok .m{background:var(--ok);border-color:var(--ok);color:#fff}
+.checks li.ok span{color:var(--ink-soft)}
+.reto-intro{padding:10px 12px 0;font-size:.93rem;color:var(--ink-soft);margin:0}
+.reto-done{margin:0 12px 12px;padding:10px 12px;border-radius:9px;background:var(--ok-tint);color:var(--ok);font-weight:700;border:2px solid var(--ok)}
+.reto-acts{display:flex;flex-wrap:wrap;gap:8px;padding:0 12px 12px}
+.tabs{display:flex;gap:4px;overflow-x:auto;padding:8px 10px 0;background:var(--paper);border-bottom:2px solid var(--ink)}
+.tabs button{flex:none;font:600 .8rem/1 var(--mono);padding:8px 9px;border:2px solid transparent;border-bottom:0;border-radius:8px 8px 0 0;background:transparent;color:var(--ink-soft);cursor:pointer;position:relative;top:2px}
+.tabs button[aria-selected="true"]{background:var(--card);border-color:var(--ink);color:var(--ink)}
+.tabs button .n{color:inherit;font-weight:400;opacity:.75}
+.tabs button.chg::after{content:"";position:absolute;top:4px;right:3px;width:7px;height:7px;border-radius:50%;background:var(--amber)}
+.tview{overflow:auto;max-height:330px}
+.tview table{width:100%;border-collapse:collapse;font:400 .8rem/1.4 var(--mono)}
+.tview th{position:sticky;top:0;background:var(--card);text-align:left;padding:8px 10px;border-bottom:2px solid var(--ink);font-weight:700;white-space:nowrap}
+.tview td{padding:6px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tview td.num{text-align:right}
+.tview tr.new td{background:var(--ok-tint)}
+.tview td.upd{background:var(--amber-tint);font-weight:700}
+.tview .nul{color:var(--ink-soft);font-style:italic}
+.tview .empty{padding:22px 14px;color:var(--ink-soft);font-size:.9rem}
+.legend{display:flex;flex-wrap:wrap;gap:12px;padding:8px 12px;font-size:.78rem;color:var(--ink-soft);border-top:1px solid var(--line)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:4px;border:1px solid var(--line)}
+.backbtn{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 16px);z-index:40}
+.backbtn[hidden]{display:none}
+details.ddl{margin-top:22px;border:2px solid var(--ink);border-radius:12px;background:var(--paper)}
+details.ddl summary{cursor:pointer;padding:12px 16px;font-weight:700}
+details.ddl .code{margin:0 12px 14px}
+
+/* taller / eval */
+.task{background:var(--card);border:2px solid var(--ink);border-radius:14px;padding:18px 20px;margin:18px 0;box-shadow:var(--shadow)}
+.task-h{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:baseline;justify-content:space-between}
+.task-h h3{margin:0}
+.badge:empty{display:none}
+.badge{font:700 .78rem/1 var(--mono);padding:5px 8px;border-radius:6px;background:var(--pg-tint);color:var(--pg-deep)}
+.task ol,.task ul{padding-left:1.25rem}
+.task li{margin:.3rem 0}
+.clas{display:grid;gap:10px;margin-top:12px}
+.clas .row{display:grid;grid-template-columns:1fr 150px 150px 30px;gap:10px;align-items:center;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper)}
+@media (max-width:640px){.clas .row{grid-template-columns:1fr 1fr 30px}.clas .row p{grid-column:1/-1}}
+.clas p{margin:0;font-size:.95rem}
+select,input[type=text]{font:600 .9rem/1.2 var(--body);padding:8px 10px;border-radius:8px;border:2px solid var(--line);background:var(--card);color:var(--ink);width:100%}
+.clas .row.ok{border-color:var(--ok);background:var(--ok-tint)}
+.clas .row.no{border-color:var(--bad);background:var(--bad-tint)}
+.mk{font-weight:800;text-align:center}
+.res{margin-top:12px;font-weight:700}
+.order{list-style:none;padding:0;margin:12px 0;display:grid;gap:8px;counter-reset:o}
+.order li{display:grid;grid-template-columns:32px 1fr auto;gap:10px;align-items:center;padding:8px 8px 8px 10px;border:2px solid var(--ink);border-radius:10px;background:var(--term);color:var(--term-ink);font:600 .86rem/1.3 var(--mono);counter-increment:o}
+.order li::before{content:counter(o);display:grid;place-items:center;width:28px;height:28px;border-radius:7px;background:var(--term-2);color:var(--t-n)}
+.order .mv{display:flex;gap:4px}
+.order .mv button{width:36px;height:34px;border-radius:7px;border:1.5px solid #3a566b;background:var(--term-2);color:var(--term-ink);cursor:pointer;font-size:1rem}
+.order .mv button:disabled{opacity:.35;cursor:default}
+.fb{margin:10px 0 0;padding:10px 12px;border-radius:9px;font-size:.93rem}
+.fb.ok{background:var(--ok-tint);color:var(--ok);border:2px solid var(--ok);font-weight:700}
+.fb.no{background:var(--bad-tint);color:var(--bad);border:2px solid var(--bad)}
+.fb[hidden]{display:none}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:820px){.two{grid-template-columns:1fr}}
+.two .task{margin:0}
+.quiz fieldset{min-width:0;border:2px solid var(--ink);border-radius:14px;padding:16px 18px 12px;margin:0 0 16px;background:var(--card)}
+.quiz legend{float:left;width:100%;font-weight:700;padding:0;margin-bottom:8px;font-size:1.02rem}
+.quiz legend+*{clear:both}
+.quiz label code{overflow-wrap:anywhere}
+.quiz legend b{font-family:var(--mono);color:var(--pg);margin-right:6px}
+.quiz pre{background:var(--term);color:var(--term-ink);border-radius:9px;padding:10px 12px;margin:6px 0 10px;overflow-x:auto;font:400 .84rem/1.55 var(--mono)}
+.quiz label{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:9px;border:1.5px solid transparent;cursor:pointer;margin:2px 0}
+.quiz label:hover{background:var(--paper)}
+.quiz input[type=radio]{margin-top:5px;accent-color:var(--pg);width:17px;height:17px;flex:none}
+.quiz label.right{border-color:var(--ok);background:var(--ok-tint)}
+.quiz label.wrong{border-color:var(--bad);background:var(--bad-tint)}
+.quiz .exp{display:none;margin:8px 0 2px;padding:9px 12px;border-radius:9px;background:var(--pg-tint);font-size:.92rem}
+.quiz.graded .exp{display:block}
+.score{position:sticky;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;background:var(--ink);color:var(--paper);border-radius:14px;padding:12px 14px 12px 18px;box-shadow:var(--shadow);margin-top:10px;z-index:5}
+.score b{font:800 1.3rem/1 var(--display)}
+.score .btn{box-shadow:none}
+.self{list-style:none;padding:0;margin:12px 0}
+.self li{margin:6px 0}
+.self label{display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border-radius:10px;background:var(--card);border:1.5px solid var(--line);cursor:pointer}
+.self input{width:20px;height:20px;accent-color:var(--ok);flex:none;margin-top:2px}
+.self label:has(input:checked){border-color:var(--ok)}
+dl.glos{display:grid;grid-template-columns:minmax(150px,220px) 1fr;gap:0;border:2px solid var(--ink);border-radius:12px;overflow:hidden;background:var(--card)}
+dl.glos dt,dl.glos dd{margin:0;padding:10px 14px;border-bottom:1px solid var(--line)}
+dl.glos dt{font:700 .88rem/1.4 var(--mono);color:var(--pg-deep);background:var(--pg-tint)}
+@media (max-width:600px){dl.glos{grid-template-columns:1fr}dl.glos dt{border-bottom:0;padding-bottom:4px}}
+footer{margin-top:70px;padding:30px 0 40px;border-top:2px solid var(--ink);background:var(--card);color:var(--ink-soft);font-size:.9rem}
+.next{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;background:var(--ink);color:var(--paper);border-radius:14px;padding:18px 20px;margin-top:26px}
+.next strong{font:800 1.2rem/1.2 var(--display)}
+.next p{margin:4px 0 0;opacity:.85}
+@media print{.top,#lab,.backbtn,.code-bar .try,.score .btn,.cta{display:none!important}body{background:#fff}.code,.term{break-inside:avoid}}
+</style>
+</head>
+<body>
+<a class="skip" href="#u1">Saltar al contenido</a>
+<header class="top">
+ <div class="wide top-in">
+  <a class="brand" href="#inicio"><span class="elef" aria-hidden="true">🐘</span>BD·107 <span class="t">PostgreSQL</span></a>
+  <nav class="nav" aria-label="Secciones">
+   <a href="#u1">CRUD</a><a href="#u2">INSERT</a><a href="#u3">UPDATE</a><a href="#u4">DELETE</a><a href="#u5">Orden FK</a><a href="#u6">Transacciones</a><a href="#lab">Laboratorio</a><a href="#taller">Taller</a><a href="#eval">Evaluación</a><a href="#chuleta">Chuleta</a>
+  </nav>
+  <span class="prog" id="prog">Retos 0/5</span>
+ </div>
+</header>
+
+<main id="inicio">
+<section class="hero">
+ <div class="wide hero-grid">
+  <div>
+   <div class="path" aria-label="Ruta del curso">
+    <span class="done">BD·101 ✔</span><span class="done">BD·102 ✔</span><span class="done">BD·103 ✔</span><span class="done">BD·104 ✔</span><span class="done">BD·105 ✔</span><span class="done">BD·106 ✔</span><span class="here">BD·107 estás aquí</span><span>BD·108</span>
+   </div>
+   <h1>Los datos cobran vida.<span class="l2">Y tú decides cómo.</span></h1>
+   <p class="lead">La estructura ya está construida. Ahora vas a llenarla, corregirla y limpiarla en PostgreSQL: <strong>INSERT</strong> para crear, <strong>UPDATE</strong> para modificar y <strong>DELETE</strong> para eliminar, respetando el orden de las llaves foráneas y con un botón de deshacer llamado transacción.</p>
+   <div class="chips"><span>⏱ ≈ 3 sesiones</span><span>🐘 PostgreSQL 14 o superior</span><span>🔧 DML</span><span>🧪 Laboratorio en el navegador</span><span>✅ Evaluación de 12 preguntas</span></div>
+   <div class="cta"><a class="btn primary" href="#u1">Empezar por el ciclo CRUD</a><a class="btn" href="#lab">Ir al laboratorio</a></div>
+  </div>
+  <div class="term" role="img" aria-label="Sesión de psql que inserta un producto y obtiene su id con RETURNING">
+   <div class="term-bar"><i></i><i></i><i></i><b>psql · tienda_db</b></div>
+<pre><span class="pr">tienda_db=#</span> <span class="k">INSERT INTO</span> productos
+<span class="pr">tienda_db-#</span>   (nombre, categoria_id, precio, cantidad)
+<span class="pr">tienda_db-#</span> <span class="k">VALUES</span> (<span class="s">'Jugo de mango'</span>, <span class="n">1</span>, <span class="n">3000</span>, <span class="n">22</span>)
+<span class="pr">tienda_db-#</span> <span class="k">RETURNING</span> id, nombre;
+ id |    nombre
+----+---------------
+  6 | Jugo de mango
+(1 row)
+
+<span class="n">INSERT 0 1</span>
+<span class="pr">tienda_db=#</span> <span class="k">BEGIN</span>;
+<span class="pr">tienda_db=*#</span> <span class="k">UPDATE</span> productos <span class="k">SET</span> precio = <span class="n">0</span>;  <span class="c">-- ¡sin WHERE!</span>
+<span class="n">UPDATE 6</span>
+<span class="pr">tienda_db=*#</span> <span class="k">ROLLBACK</span>;  <span class="c">-- aquí no pasó nada</span>
+<span class="n">ROLLBACK</span>
+<span class="pr">tienda_db=#</span> <span class="cur"></span></pre>
+  </div>
+ </div>
+</section>
+
+<section class="unit" style="padding-top:48px">
+ <div class="wrap">
+  <h2>Hoja de ruta</h2>
+  <p>En BD·103 a BD·106 construiste la estructura con DDL. Ahora vas a manipular los datos dentro de esa estructura con DML. Cada operación tiene su sintaxis, sus reglas con FK y sus errores clásicos. Si vienes de SQL Server, busca los recuadros amarillos: te muestran qué cambia en PostgreSQL.</p>
+  <ol class="road">
+   <li><a href="#u1"><b>01 · 15 min</b><strong>El ciclo CRUD</strong><span>Las cuatro operaciones y la regla de oro con FK.</span></a></li>
+   <li><a href="#u2"><b>02 · 25 min</b><strong>INSERT</strong><span>Simple, múltiple, DEFAULT, NULL, RETURNING y ON CONFLICT.</span></a></li>
+   <li><a href="#u3"><b>03 · 25 min</b><strong>UPDATE</strong><span>Siempre con WHERE. Y el desastre que pasa sin él.</span></a></li>
+   <li><a href="#u4"><b>04 · 20 min</b><strong>DELETE y TRUNCATE</strong><span>Borrar filas puntuales o vaciar la tabla entera.</span></a></li>
+   <li><a href="#u5"><b>05 · 15 min</b><strong>El orden con FK</strong><span>INSERT de padre a hijo, DELETE de hijo a padre.</span></a></li>
+   <li><a href="#u6"><b>06 · 20 min</b><strong>Transacciones</strong><span>BEGIN, COMMIT, ROLLBACK y SAVEPOINT.</span></a></li>
+   <li><a href="#lab"><b>Lab</b><strong>Laboratorio psql</strong><span>Escribe SQL y mira cómo cambian las tablas.</span></a></li>
+   <li><a href="#taller"><b>Taller · 90 min</b><strong>Retos E1 a E6</strong><span>Con verificación automática.</span></a></li>
+   <li><a href="#eval"><b>Cierre</b><strong>Evaluación</strong><span>Prueba, rúbrica y autoevaluación.</span></a></li>
+  </ol>
+ </div>
+</section>
+
+<!-- 01 -->
+<section class="unit" id="u1">
+ <div class="wrap">
+  <div class="u-head"><span class="u-num">01</span><div><h2>El ciclo CRUD: las cuatro operaciones fundamentales</h2><span class="u-time">⏱ 15 min de lectura</span></div></div>
+  <p><strong>CRUD</strong> es el acrónimo de las cuatro operaciones básicas sobre los datos: <strong>C</strong>reate (crear), <strong>R</strong>ead (leer), <strong>U</strong>pdate (actualizar) y <strong>D</strong>elete (borrar). Desde la tienda escolar hasta un banco, todo sistema de información se apoya en estas cuatro.</p>
+  <div class="crud" role="list">
+   <div role="listitem"><b>C</b><span>Create</span><code>INSERT</code></div>
+   <div role="listitem"><b>R</b><span>Read</span><code>SELECT</code></div>
+   <div role="listitem"><b>U</b><span>Update</span><code>UPDATE</code></div>
+   <div role="listitem"><b>D</b><span>Delete</span><code>DELETE</code></div>
+  </div>
+  <div class="tw"><table class="t">
+   <thead><tr><th>Operación</th><th>Comando</th><th>Qué hace</th><th>Qué responde psql</th></tr></thead>
+   <tbody>
+    <tr><td>Create</td><td><code>INSERT</code></td><td>Agrega filas nuevas a una tabla.</td><td><code>INSERT 0 1</code></td></tr>
+    <tr><td>Read</td><td><code>SELECT</code></td><td>Consulta los datos (lo verás a fondo en BD·108).</td><td><code>(5 rows)</code></td></tr>
+    <tr><td>Update</td><td><code>UPDATE</code></td><td>Modifica filas que ya existen.</td><td><code>UPDATE 2</code></td></tr>
+    <tr><td>Delete</td><td><code>DELETE</code></td><td>Elimina filas que ya existen.</td><td><code>DELETE 1</code></td></tr>
+   </tbody>
+  </table></div>
+  <p>Fíjate en la última columna: PostgreSQL te dice cuántas filas tocó cada instrucción. Léelo siempre. Si esperabas <code>UPDATE 1</code> y ves <code>UPDATE 48</code>, algo salió mal. En <code>INSERT 0 1</code> el primer número es un resto histórico que siempre vale 0; el segundo son las filas insertadas.</p>
+
+  <h3>La regla de oro del orden con FK</h3>
+  <p>Cuando las tablas están relacionadas, el orden de las operaciones no es opcional:</p>
+  <div class="tw"><table class="t">
+   <thead><tr><th>Operación</th><th>Orden correcto</th><th>Por qué</th></tr></thead>
+   <tbody>
+    <tr><td><code>INSERT</code></td><td>Primero el padre, después el hijo.</td><td>El hijo necesita que exista la PK a la que va a apuntar.</td></tr>
+    <tr><td><code>DELETE</code></td><td>Primero el hijo, después el padre.</td><td>No puedes borrar un padre mientras haya hijos apuntándole (salvo con <code>ON DELETE CASCADE</code>).</td></tr>
+   </tbody>
+  </table></div>
+  <div class="call info"><strong>💡 Analogía</strong><p>Construir y demoler una casa: primero los cimientos y luego las paredes (INSERT: padre → hijo). Para demoler, primero las paredes y luego los cimientos (DELETE: hijo → padre). Al revés, todo se derrumba.</p></div>
+  <div class="call ss"><strong>🐘 La base de datos de esta entrega</strong><p>Trabajarás sobre <code>tienda_db</code>, con las tablas <code>categorias</code>, <code>productos</code>, <code>clientes</code>, <code>pedidos</code>, <code>detalle_pedido</code> y <code>productos_respaldo</code>. El script completo para crearlas en tu propio PostgreSQL está al final del laboratorio. En el laboratorio ya existen y tienen datos.</p></div>
+ </div>
+</section>
+
+<!-- 02 -->
+<section class="unit" id="u2">
+ <div class="wrap">
+  <div class="u-head"><span class="u-num">02</span><div><h2>INSERT: crear datos nuevos</h2><span class="u-time">⏱ 25 min de práctica</span></div></div>
+
+  <h3>INSERT simple: una fila a la vez</h3>
+  <p>Nombras la tabla, las columnas que vas a llenar y, en el mismo orden, los valores. Los textos van entre comillas simples.</p>
+  <div class="code"><div class="code-bar"><span>insert_simple.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>-- Una categoría nueva (tabla padre)
+INSERT INTO categorias (nombre)
+VALUES ('Postres');
+
+-- Un producto (tabla hijo) que apunta a la categoría 1, Bebidas
+INSERT INTO productos (nombre, categoria_id, precio, cantidad)
+VALUES ('Limonada', 1, 2800, 20);</pre>
+   <div class="out">INSERT 0 1
+INSERT 0 1</div></div>
+
+  <h3>INSERT múltiple: varias filas en una instrucción</h3>
+  <div class="code"><div class="code-bar"><span>insert_multiple.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>INSERT INTO categorias (nombre)
+VALUES ('Lácteos'),
+       ('Panadería'),
+       ('Frutas');</pre>
+   <div class="out">INSERT 0 3</div></div>
+
+  <h3>Omitir columnas con DEFAULT</h3>
+  <p>Si una columna tiene <code>DEFAULT</code>, puedes dejarla fuera y PostgreSQL pone el valor por ti. También puedes escribir la palabra <code>DEFAULT</code> como valor.</p>
+  <div class="code"><div class="code-bar"><span>insert_default.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>-- activo tiene DEFAULT TRUE: lo omitimos
+INSERT INTO productos (nombre, categoria_id, precio, cantidad)
+VALUES ('Pandebono', 2, 1500, 40);
+
+-- cantidad tiene DEFAULT 0: lo pedimos de forma explícita
+INSERT INTO productos (nombre, categoria_id, precio, cantidad)
+VALUES ('Buñuelo', 2, 1200, DEFAULT)
+RETURNING nombre, cantidad, activo;</pre>
+   <div class="out">INSERT 0 1
+  nombre  | cantidad | activo
+----------+----------+--------
+ Buñuelo  |        0 | t</div></div>
+  <div class="call ss"><strong>🐘 Si vienes de SQL Server: BIT ya no, BOOLEAN sí</strong><p>En SQL Server <code>activo</code> era <code>BIT</code> y escribías 1 o 0. En PostgreSQL es <code>BOOLEAN</code>: escribe <code>TRUE</code> o <code>FALSE</code>. Si insertas un <code>1</code>, recibes <code>column "activo" is of type boolean but expression is of type integer</code>. psql muestra los booleanos como <code>t</code> y <code>f</code>.</p></div>
+
+  <h3>NULL explícito</h3>
+  <p>Si una columna admite NULL y quieres dejarla vacía a propósito, escribe <code>NULL</code> sin comillas. Con comillas sería el texto “NULL”, que no es lo mismo.</p>
+  <div class="code"><div class="code-bar"><span>insert_null.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>INSERT INTO categorias (nombre, descripcion)
+VALUES ('Helados', NULL);</pre></div>
+
+  <h3>El id no se escribe: IDENTITY lo genera</h3>
+  <p>En tienda_db cada id está declarado como <code>INTEGER GENERATED ALWAYS AS IDENTITY</code>. PostgreSQL lo numera solo, y si intentas escribirlo te detiene:</p>
+  <div class="code"><div class="code-bar"><span>insert_identity.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>INSERT INTO categorias (id, nombre)
+VALUES (10, 'Postres');</pre>
+   <div class="out err">ERROR:  cannot insert a non-DEFAULT value into column "id"
+DETAIL:  Column "id" is an identity column defined as GENERATED ALWAYS.
+HINT:  Use OVERRIDING SYSTEM VALUE to override.</div></div>
+  <div class="call ss"><strong>🐘 SERIAL e IDENTITY</strong><p>En tutoriales viejos verás <code>id SERIAL PRIMARY KEY</code>. Funciona, pero sí te deja escribir el id a mano y el contador no se entera, así que tarde o temprano chocas con <code>duplicate key value violates unique constraint</code>. <code>GENERATED ALWAYS AS IDENTITY</code> es el estándar actual y te protege de ese error.</p><p>Un detalle más: si un INSERT falla, el número que ya se había reservado se pierde. Por eso es normal ver huecos en los id (1, 2, 4…). No es un problema: un id identifica, no cuenta.</p></div>
+
+  <h3>RETURNING: el id recién creado, sin otra consulta</h3>
+  <p>Agrega <code>RETURNING</code> al final del INSERT y PostgreSQL te devuelve las columnas que pidas de las filas que acaba de crear. Es la forma de saber qué id le tocó a tu registro para usarlo en la tabla hijo.</p>
+  <div class="code"><div class="code-bar"><span>insert_returning.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>INSERT INTO clientes (nombre, telefono)
+VALUES ('Valentina Ruiz', '310-111-2222')
+RETURNING id, nombre;</pre>
+   <div class="out"> id |     nombre
+----+----------------
+  3 | Valentina Ruiz
+(1 row)
+
+INSERT 0 1</div></div>
+  <div class="call ss"><strong>🐘 Adiós SCOPE_IDENTITY()</strong><p>Lo que en SQL Server hacías con <code>SELECT SCOPE_IDENTITY();</code> o <code>OUTPUT INSERTED.id</code>, en PostgreSQL se hace con <code>RETURNING id</code>. Funciona igual en UPDATE y DELETE.</p></div>
+
+  <h3>INSERT con SELECT: copiar datos de otra tabla</h3>
+  <div class="code"><div class="code-bar"><span>insert_select.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>-- Copiar los productos activos a la tabla de respaldo
+INSERT INTO productos_respaldo (nombre, categoria_id, precio, cantidad)
+SELECT nombre, categoria_id, precio, cantidad
+FROM productos
+WHERE activo = TRUE;</pre>
+   <div class="out">INSERT 0 4</div></div>
+  <p>Sirve para respaldos, migraciones o para llenar una tabla de resumen con datos que ya existen. Fíjate en que no hay <code>VALUES</code>: las filas vienen del SELECT.</p>
+
+  <h3>Bonus: ON CONFLICT, insertar sin chocar</h3>
+  <p><code>categorias.nombre</code> es UNIQUE, así que insertar “Bebidas” otra vez da error. Con <code>ON CONFLICT</code> decides qué hacer cuando la fila ya existe: ignorarla o actualizarla. A esto se le llama <em>upsert</em>.</p>
+  <div class="code"><div class="code-bar"><span>upsert.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>-- Si ya existe, no hagas nada
+INSERT INTO categorias (nombre)
+VALUES ('Bebidas')
+ON CONFLICT (nombre) DO NOTHING;
+
+-- Si ya existe, actualiza la descripción con el valor que intenté insertar
+INSERT INTO categorias (nombre, descripcion)
+VALUES ('Bebidas', 'Frías y calientes')
+ON CONFLICT (nombre) DO UPDATE SET descripcion = EXCLUDED.descripcion;</pre>
+   <div class="out">INSERT 0 0
+INSERT 0 1</div></div>
+  <p><code>EXCLUDED</code> es la fila que intentaste insertar y fue rechazada por el conflicto.</p>
+ </div>
+</section>
+
+<!-- 03 -->
+<section class="unit" id="u3">
+ <div class="wrap">
+  <div class="u-head"><span class="u-num">03</span><div><h2>UPDATE: modificar datos existentes</h2><span class="u-time">⏱ 25 min de práctica</span></div></div>
+  <h3>La sintaxis correcta: siempre con WHERE</h3>
+  <div class="code"><div class="code-bar"><span>update_con_where.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>-- Subir el precio de la Gaseosa (id = 1)
+UPDATE productos
+SET precio = 3800
+WHERE id = 1;</pre>
+   <div class="out">UPDATE 1</div></div>
+
+  <h3>UPDATE con expresiones</h3>
+  <p>El nuevo valor puede calcularse a partir del valor actual de la columna.</p>
+  <div class="code"><div class="code-bar"><span>update_expresion.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>-- Aumentar 10 % todos los productos de Fritos (categoría 2)
+UPDATE productos
+SET precio = precio * 1.10
+WHERE categoria_id = 2;</pre>
+   <div class="out">UPDATE 2</div></div>
+
+  <h3>Varias columnas a la vez y RETURNING</h3>
+  <div class="code"><div class="code-bar"><span>update_multiple.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>UPDATE productos
+SET precio = 2700,
+    cantidad = cantidad - 5
+WHERE nombre = 'Empanada'
+RETURNING nombre, precio, cantidad;</pre>
+   <div class="out">  nombre  | precio  | cantidad
+----------+---------+----------
+ Empanada | 2700.00 |       25
+(1 row)
+
+UPDATE 1</div></div>
+  <p>Con <code>RETURNING</code> ves de inmediato cómo quedó cada fila modificada.</p>
+
+  <h3>Borrado lógico: desactivar en vez de borrar</h3>
+  <p>Muchas veces no conviene borrar un producto que ya aparece en pedidos antiguos. En su lugar se marca como inactivo:</p>
+  <div class="code"><div class="code-bar"><span>borrado_logico.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>UPDATE productos
+SET activo = FALSE
+WHERE id = 4;</pre>
+   <div class="out">UPDATE 1</div></div>
+
+  <h3>⚠️ El desastre clásico: UPDATE sin WHERE</h3>
+  <div class="code"><div class="code-bar"><span>peligro.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>-- ⚠️ PELIGRO: afecta TODAS las filas
+UPDATE productos
+SET precio = 0;</pre>
+   <div class="out warn">UPDATE 5</div></div>
+  <p>Acabas de poner todos los productos a precio cero. No hay error de sintaxis ni advertencia: PostgreSQL ejecuta exactamente lo que le pediste. El problema es que le pediste algo que no querías. Y psql trabaja en modo <em>autocommit</em>: el cambio ya quedó guardado.</p>
+  <div class="call danger"><strong>🚨 Regla de supervivencia</strong><p>Antes de un UPDATE, escribe el SELECT con el mismo WHERE y mira qué filas vas a tocar. Si el resultado es el esperado, cambia <code>SELECT *</code> por <code>UPDATE … SET …</code> y conserva el WHERE intacto.</p></div>
+  <div class="code"><div class="code-bar"><span>select_primero.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>-- Paso 1: ¿qué filas se van a modificar?
+SELECT * FROM productos WHERE id = 1;
+
+-- Paso 2: si es lo que esperabas, ejecuta el UPDATE con el mismo WHERE
+UPDATE productos SET precio = 3800 WHERE id = 1;</pre></div>
+  <p>En la unidad 06 verás una red de seguridad todavía mejor: abrir una transacción antes de un cambio grande.</p>
+ </div>
+</section>
+
+<!-- 04 -->
+<section class="unit" id="u4">
+ <div class="wrap">
+  <div class="u-head"><span class="u-num">04</span><div><h2>DELETE y TRUNCATE: eliminar datos</h2><span class="u-time">⏱ 20 min de práctica</span></div></div>
+  <h3>DELETE con WHERE: borrar filas específicas</h3>
+  <div class="code"><div class="code-bar"><span>delete_con_where.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>-- Borrar el producto con id = 3 (Café)
+DELETE FROM productos
+WHERE id = 3;</pre>
+   <div class="out">DELETE 1</div></div>
+  <p>También acepta <code>RETURNING</code>, útil para ver qué se borró:</p>
+  <div class="code"><div class="code-bar"><span>delete_returning.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>DELETE FROM productos
+WHERE cantidad = 0
+RETURNING id, nombre;</pre></div>
+
+  <h3>⚠️ DELETE sin WHERE: vaciar la tabla</h3>
+  <div class="code"><div class="code-bar"><span>peligro_delete.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>-- ⚠️ PELIGRO: borra TODAS las filas
+DELETE FROM detalle_pedido;</pre>
+   <div class="out warn">DELETE 2</div></div>
+  <p>La tabla sigue existiendo, pero sin datos. Y el contador del id no se reinicia: el próximo id sigue desde donde iba.</p>
+
+  <h3>TRUNCATE: vaciar de golpe</h3>
+  <div class="code"><div class="code-bar"><span>truncate.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>-- Vacía la tabla, pero el contador del id sigue donde iba
+TRUNCATE TABLE productos_respaldo;
+
+-- Vacía la tabla y reinicia el contador a 1
+TRUNCATE TABLE productos_respaldo RESTART IDENTITY;</pre>
+   <div class="out">TRUNCATE TABLE
+TRUNCATE TABLE</div></div>
+  <div class="call ss"><strong>🐘 Diferencia importante con SQL Server</strong><p>En SQL Server, <code>TRUNCATE TABLE</code> reinicia el IDENTITY. En PostgreSQL <strong>no</strong>, a menos que agregues <code>RESTART IDENTITY</code>. Y si otra tabla tiene una FK que apunta a la que quieres vaciar, PostgreSQL se niega aunque esa otra tabla esté vacía; con <code>CASCADE</code> vacía también todas las tablas que dependen de ella. Úsalo con muchísimo cuidado.</p></div>
+  <div class="code"><div class="code-bar"><span>truncate_fk.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>TRUNCATE TABLE categorias;</pre>
+   <div class="out err">ERROR:  cannot truncate a table referenced in a foreign key constraint
+DETAIL:  Table "productos" references "categorias".
+HINT:  Truncate table "productos" at the same time, or use TRUNCATE ... CASCADE.</div></div>
+
+  <div class="tw"><table class="t">
+   <thead><tr><th>Característica</th><th><code>DELETE FROM tabla</code></th><th><code>TRUNCATE TABLE tabla</code></th></tr></thead>
+   <tbody>
+    <tr><td>¿Se puede filtrar con WHERE?</td><td>Sí</td><td>No, vacía todo</td></tr>
+    <tr><td>¿Reinicia el contador del id?</td><td>No</td><td>Solo con <code>RESTART IDENTITY</code></td></tr>
+    <tr><td>¿Qué pasa con las FK?</td><td>Falla si hay hijos que apuntan a las filas borradas</td><td>Falla si alguna tabla le apunta, salvo con <code>CASCADE</code></td></tr>
+    <tr><td>¿Admite RETURNING?</td><td>Sí</td><td>No</td></tr>
+    <tr><td>¿Se puede deshacer?</td><td>Sí, dentro de una transacción</td><td>Sí, dentro de una transacción</td></tr>
+    <tr><td>Velocidad</td><td>Fila por fila, más lento en tablas grandes</td><td>Muy rápido, libera el espacio de inmediato</td></tr>
+   </tbody>
+  </table></div>
+  <div class="call danger"><strong>🚨 La misma regla de supervivencia</strong><p>Antes de un DELETE, ejecuta el SELECT con el mismo WHERE para ver exactamente qué filas se van a borrar.</p></div>
+ </div>
+</section>
+
+<!-- 05 -->
+<section class="unit" id="u5">
+ <div class="wrap">
+  <div class="u-head"><span class="u-num">05</span><div><h2>El orden con FK: INSERT padre → hijo, DELETE hijo → padre</h2><span class="u-time">⏱ 15 min de práctica</span></div></div>
+  <h3>INSERT: primero el padre</h3>
+  <p>Intentemos insertar un producto en una categoría que no existe:</p>
+  <div class="code"><div class="code-bar"><span>fk_insert.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>-- ⚠️ La categoría 999 no existe
+INSERT INTO productos (nombre, categoria_id, precio, cantidad)
+VALUES ('Producto fantasma', 999, 1000, 5);</pre>
+   <div class="out err">ERROR:  insert or update on table "productos" violates foreign key constraint "productos_categoria_id_fkey"
+DETAIL:  Key (categoria_id)=(999) is not present in table "categorias".</div></div>
+  <p>La solución: crear primero la categoría y usar el id que te devuelve.</p>
+  <div class="code"><div class="code-bar"><span>fk_insert_ok.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>-- ✔ Orden correcto
+INSERT INTO categorias (nombre) VALUES ('Saludables') RETURNING id;   -- supón que devuelve 4
+
+INSERT INTO productos (nombre, categoria_id, precio, cantidad)
+VALUES ('Ensalada de frutas', 4, 4500, 10);</pre></div>
+  <div class="call info"><strong>💡 Sin adivinar el id</strong><p>Si no quieres depender del número exacto, una subconsulta busca el id por nombre: <code>VALUES ('Ensalada de frutas', (SELECT id FROM categorias WHERE nombre = 'Saludables'), 4500, 10)</code>.</p></div>
+
+  <h3>DELETE: primero el hijo</h3>
+  <p>Intentemos borrar la categoría Snacks, que todavía tiene productos:</p>
+  <div class="code"><div class="code-bar"><span>fk_delete.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>-- ⚠️ Papas fritas apunta a la categoría 3
+DELETE FROM categorias WHERE id = 3;</pre>
+   <div class="out err">ERROR:  update or delete on table "categorias" violates foreign key constraint "productos_categoria_id_fkey" on table "productos"
+DETAIL:  Key (id)=(3) is still referenced from table "productos".</div></div>
+  <div class="code"><div class="code-bar"><span>fk_delete_ok.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>-- ✔ Orden correcto
+DELETE FROM productos WHERE categoria_id = 3;   -- primero los hijos
+DELETE FROM categorias WHERE id = 3;            -- después el padre</pre>
+   <div class="out">DELETE 1
+DELETE 1</div></div>
+  <div class="call ss"><strong>🐘 El código del error: 23503</strong><p>En SQL Server este error era el <code>Msg 547</code>. En PostgreSQL toda violación de llave foránea tiene el código SQLSTATE <code>23503</code> (<em>foreign_key_violation</em>). Si tu PostgreSQL está instalado en español verás el mensaje traducido, pero el código es el mismo.</p></div>
+
+  <h3>La alternativa: ON DELETE CASCADE</h3>
+  <p>En tienda_db, <code>detalle_pedido.pedido_id</code> se definió con <code>ON DELETE CASCADE</code>: si borras un pedido, PostgreSQL borra sus líneas de detalle automáticamente.</p>
+  <div class="code"><div class="code-bar"><span>cascade.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>-- Borra el pedido 1 y, en cascada, sus 2 líneas de detalle
+DELETE FROM pedidos WHERE id = 1;</pre>
+   <div class="out">DELETE 1</div></div>
+  <p>Observa que psql dice <code>DELETE 1</code>: solo cuenta las filas de la tabla que nombraste, no las que se fueron en cascada. Es cómodo, pero peligroso: asegúrate de que de verdad quieres ese comportamiento antes de definirlo.</p>
+ </div>
+</section>
+
+<!-- 06 -->
+<section class="unit" id="u6">
+ <div class="wrap">
+  <div class="u-head"><span class="u-num">06</span><div><h2>Transacciones: el botón de deshacer de PostgreSQL</h2><span class="u-time">⏱ 20 min de práctica</span></div></div>
+  <p>Una <strong>transacción</strong> agrupa varias instrucciones en una sola unidad: o se confirman todas, o no se confirma ninguna. Mientras está abierta, psql cambia el prompt de <code>tienda_db=#</code> a <code>tienda_db=*#</code> para recordártelo.</p>
+  <div class="code"><div class="code-bar"><span>transaccion.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>BEGIN;
+
+-- Operación 1: el pedido (padre)
+INSERT INTO pedidos (cliente_id, total)
+VALUES (2, 6000)
+RETURNING id;                 -- supón que devuelve 2
+
+-- Operación 2: su detalle (hijo)
+INSERT INTO detalle_pedido (pedido_id, producto_id, cantidad, precio_unitario)
+VALUES (2, 1, 1, 3500),
+       (2, 2, 1, 2500);
+
+-- Todo bien: confirmar
+COMMIT;</pre>
+   <div class="out">BEGIN
+INSERT 0 1
+INSERT 0 2
+COMMIT</div></div>
+  <div class="tw"><table class="t">
+   <thead><tr><th>Comando</th><th>Qué hace</th></tr></thead>
+   <tbody>
+    <tr><td><code>BEGIN;</code></td><td>Abre la transacción. Desde aquí los cambios son provisionales y nadie más los ve.</td></tr>
+    <tr><td><code>COMMIT;</code></td><td>Confirma todos los cambios. Ya no se pueden deshacer.</td></tr>
+    <tr><td><code>ROLLBACK;</code></td><td>Deshace todo lo hecho desde el BEGIN, como si nunca hubiera pasado.</td></tr>
+    <tr><td><code>SAVEPOINT nombre;</code></td><td>Marca un punto intermedio dentro de la transacción.</td></tr>
+    <tr><td><code>ROLLBACK TO SAVEPOINT nombre;</code></td><td>Deshace solo lo posterior a esa marca.</td></tr>
+   </tbody>
+  </table></div>
+  <div class="call ss"><strong>🐘 BEGIN TRAN no existe</strong><p>En SQL Server escribías <code>BEGIN TRAN</code>. En PostgreSQL es <code>BEGIN;</code> (o <code>BEGIN TRANSACTION;</code>, o <code>START TRANSACTION;</code>). Y sin BEGIN, psql confirma cada instrucción apenas termina: eso es el modo <em>autocommit</em>.</p></div>
+
+  <h3>El simulacro de desastre</h3>
+  <p>Con una transacción abierta, hasta un DELETE sin WHERE tiene arreglo:</p>
+  <div class="code"><div class="code-bar"><span>simulacro.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>BEGIN;
+DELETE FROM detalle_pedido;              -- ¡uy, sin WHERE!
+SELECT count(*) FROM detalle_pedido;     -- 0
+ROLLBACK;
+SELECT count(*) FROM detalle_pedido;     -- 2: todo volvió</pre></div>
+
+  <h3>Cuando algo falla dentro de la transacción</h3>
+  <p>PostgreSQL es estricto: si una instrucción falla dentro de una transacción, toda la transacción queda <strong>abortada</strong>. El prompt cambia a <code>tienda_db=!#</code> y cualquier otra instrucción se rechaza hasta que escribas ROLLBACK.</p>
+  <div class="code"><div class="code-bar"><span>abortada.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>BEGIN;
+INSERT INTO productos (nombre, categoria_id, precio)
+VALUES ('Fantasma', 999, 100);            -- falla: la categoría no existe
+INSERT INTO categorias (nombre) VALUES ('Postres');   -- rechazada
+ROLLBACK;</pre>
+   <div class="out err">ERROR:  current transaction is aborted, commands ignored until end of transaction block</div></div>
+  <p>Si escribes <code>COMMIT</code> sobre una transacción abortada, PostgreSQL responde <code>ROLLBACK</code>: no guarda nada. Esa es justamente la garantía de “todo o nada”.</p>
+
+  <h3>SAVEPOINT: deshacer solo una parte</h3>
+  <div class="code"><div class="code-bar"><span>savepoint.sql</span><button class="try" type="button">Probar en el laboratorio</button></div>
+<pre data-sql>BEGIN;
+UPDATE productos SET precio = 4000 WHERE id = 1;
+SAVEPOINT antes_de_borrar;
+DELETE FROM productos WHERE id = 3;
+ROLLBACK TO SAVEPOINT antes_de_borrar;   -- el Café vuelve, el precio nuevo se queda
+COMMIT;</pre></div>
+  <div class="call info"><strong>🤓 ¿Cuándo se usa esto?</strong><p>En operaciones que tocan varias tablas y deben ser atómicas: una venta que crea el pedido, su detalle y descuenta inventario; una transferencia que resta de una cuenta y suma en otra. Si falla un paso, se deshacen todos. Un detalle: los contadores de id no retroceden con ROLLBACK, así que verás un salto en la numeración.</p></div>
+ </div>
+</section>
+<!-- LAB -->
+<section id="lab" aria-labelledby="lab-t">
+ <div class="wide">
+  <div class="lab-head">
+   <div><h2 id="lab-t">Laboratorio psql</h2>
+   <p>Un PostgreSQL simulado que corre en tu navegador, con tienda_db ya creada. Escribe SQL, ejecútalo con el botón o con Ctrl + Enter y mira cómo cambian las tablas en el panel de datos. Equivócate sin miedo: el botón Reiniciar datos lo deja todo como estaba.</p></div>
+  </div>
+  <div class="retos" id="retoBar" role="group" aria-label="Modo del laboratorio"></div>
+  <div class="lab-grid">
+   <div class="panel">
+    <div class="panel-h"><span>Editor SQL</span><span class="txstate" id="txstate">Sin transacción</span></div>
+    <div class="edwrap" id="edwrap"><pre id="edhl" aria-hidden="true"></pre><textarea id="ed" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="Editor de SQL" placeholder="-- Escribe aquí tu SQL, por ejemplo:&#10;SELECT * FROM productos;"></textarea></div>
+    <div class="ed-bar">
+     <button class="btn primary small" id="run" type="button">▶ Ejecutar</button>
+     <button class="btn small ghost" id="clr" type="button">Limpiar editor</button>
+     <button class="btn small ghost" id="rst" type="button">Reiniciar datos</button>
+     <span class="hint">Ctrl + Enter ejecuta · <code>\dt</code> lista tablas · <code>\d productos</code> describe</span>
+    </div>
+    <div class="con" id="con" role="log" aria-live="polite" aria-label="Salida de psql"></div>
+   </div>
+   <div class="side">
+    <div class="panel" id="retoPanel">
+     <div class="panel-h"><span id="retoTitle">Modo libre</span><span class="badge" id="retoCount"></span></div>
+     <p class="reto-intro" id="retoIntro"></p>
+     <ul class="checks" id="checks"></ul>
+     <div id="retoDone"></div>
+     <div class="reto-acts" id="retoActs"></div>
+    </div>
+    <div class="panel">
+     <div class="tabs" id="tabs" role="tablist" aria-label="Tablas de tienda_db"></div>
+     <div class="tview" id="tview" role="tabpanel"></div>
+     <div class="legend"><span><i style="background:var(--ok-tint)"></i>fila nueva</span><span><i style="background:var(--amber-tint)"></i>valor modificado</span><span id="delInfo"></span></div>
+    </div>
+   </div>
+  </div>
+  <details class="ddl">
+   <summary>Script para crear tienda_db en tu propio PostgreSQL</summary>
+   <div class="code"><div class="code-bar"><span>tienda_db.sql · PostgreSQL 14+</span><button class="try" type="button" id="copyDDL">Copiar script</button></div>
+<pre data-sql id="ddl">-- Ejecuta CREATE DATABASE aparte y conéctate con: \c tienda_db
+CREATE DATABASE tienda_db;
+
+CREATE TABLE categorias (
+  id          INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  nombre      VARCHAR(50) NOT NULL UNIQUE,
+  descripcion TEXT
+);
+
+CREATE TABLE productos (
+  id           INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  nombre       VARCHAR(80) NOT NULL,
+  categoria_id INTEGER NOT NULL REFERENCES categorias (id),
+  precio       NUMERIC(10,2) NOT NULL CHECK (precio &gt;= 0),
+  cantidad     INTEGER NOT NULL DEFAULT 0 CHECK (cantidad &gt;= 0),
+  activo       BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE clientes (
+  id       INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  nombre   VARCHAR(80) NOT NULL,
+  telefono VARCHAR(20)
+);
+
+CREATE TABLE pedidos (
+  id         INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  cliente_id INTEGER NOT NULL REFERENCES clientes (id),
+  fecha      DATE NOT NULL DEFAULT CURRENT_DATE,
+  total      NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (total &gt;= 0)
+);
+
+CREATE TABLE detalle_pedido (
+  id              INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  pedido_id       INTEGER NOT NULL REFERENCES pedidos (id) ON DELETE CASCADE,
+  producto_id     INTEGER NOT NULL REFERENCES productos (id),
+  cantidad        INTEGER NOT NULL CHECK (cantidad &gt; 0),
+  precio_unitario NUMERIC(10,2) NOT NULL CHECK (precio_unitario &gt;= 0)
+);
+
+CREATE TABLE productos_respaldo (
+  id           INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  nombre       VARCHAR(80),
+  categoria_id INTEGER,
+  precio       NUMERIC(10,2),
+  cantidad     INTEGER
+);
+
+-- Datos iniciales del modo libre
+INSERT INTO categorias (nombre) VALUES ('Bebidas'), ('Fritos'), ('Snacks');
+INSERT INTO productos (nombre, categoria_id, precio, cantidad, activo)
+VALUES ('Gaseosa 400 ml', 1, 3500, 48, TRUE),
+       ('Empanada', 2, 2500, 30, TRUE),
+       ('Café', 1, 1800, 0, FALSE),
+       ('Arepa', 2, 2000, 15, TRUE),
+       ('Papas fritas', 3, 4000, 25, TRUE);
+INSERT INTO clientes (nombre, telefono)
+VALUES ('Andrés Gómez', '310-555-0101'), ('Laura Pérez', NULL);
+INSERT INTO pedidos (cliente_id, fecha, total) VALUES (1, '2026-10-27', 9500);
+INSERT INTO detalle_pedido (pedido_id, producto_id, cantidad, precio_unitario)
+VALUES (1, 1, 2, 3500), (1, 2, 1, 2500);</pre></div>
+  </details>
+ </div>
+</section>
+<button class="btn amber backbtn" id="backBtn" type="button" hidden>Volver a la lección</button>
+
+<!-- TALLER -->
+<section class="unit" id="taller">
+ <div class="wrap">
+  <div class="u-head"><span class="u-num">07</span><div><h2>Taller paso a paso</h2><span class="u-time">⏱ 90 min de laboratorio</span></div></div>
+  <p>Seis ejercicios que van de clasificar operaciones a simular un día completo en la tienda escolar. E1 y el ejercicio de orden se resuelven aquí mismo. E2 a E6 se hacen en el laboratorio: cada uno carga sus propios datos y revisa tu trabajo automáticamente.</p>
+  <div class="call info"><strong>👩‍🏫 Nota para el instructor(a)</strong><p>Sugerencia de 3 sesiones. Sesión 1: unidades 01 y 02, E1 y E2. Sesión 2: unidades 03 a 05, ejercicio de orden y E3. Sesión 3: unidad 06, E4 a E6 y evaluación.</p></div>
+
+  <div class="task" id="e1">
+   <div class="task-h"><h3>E1 · Clasifica la operación</h3><span class="badge">10 min · individual</span></div>
+   <p>Para cada situación, elige la operación CRUD y el comando SQL que usarías.</p>
+   <div class="clas" id="clas"></div>
+   <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap"><button class="btn primary small" id="clasChk" type="button">Comprobar</button><button class="btn small ghost" id="clasRst" type="button">Borrar respuestas</button></div>
+   <p class="res" id="clasRes" aria-live="polite"></p>
+  </div>
+
+  <div class="task" id="eorden">
+   <div class="task-h"><h3>Ordena las operaciones</h3><span class="badge">10 min · parejas</span></div>
+   <p>Usa las flechas para poner las instrucciones en un orden que PostgreSQL acepte. Supón que ninguna FK tiene CASCADE. Hay más de un orden válido.</p>
+   <div class="two">
+    <div><strong>Llenar tienda_db vacía</strong><ol class="order" id="ordIns"></ol><button class="btn primary small" type="button" data-ordchk="ins">Comprobar</button><p class="fb" id="fb-ins" hidden></p></div>
+    <div><strong>Vaciar tienda_db con DELETE</strong><ol class="order" id="ordDel"></ol><button class="btn primary small" type="button" data-ordchk="del">Comprobar</button><p class="fb" id="fb-del" hidden></p></div>
+   </div>
+  </div>
+
+  <div id="retoCards"></div>
+ </div>
+</section>
+
+<!-- EVALUACIÓN -->
+<section class="unit" id="eval">
+ <div class="wrap">
+  <div class="u-head"><span class="u-num">08</span><div><h2>Evaluación</h2><span class="u-time">⏱ 20 min · individual</span></div></div>
+  <p>Doce preguntas sobre todo lo de esta entrega. Responde, pulsa Calificar y lee la explicación de cada una, sobre todo de las que fallaste. Puedes repetirla; se guarda tu mejor puntaje.</p>
+  <form class="quiz" id="quiz" onsubmit="return false"></form>
+  <div class="score" id="score"><span id="scoreTxt">0 de 12 respondidas</span><span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn amber small" id="grade" type="button">Calificar</button><button class="btn small" id="retry" type="button">Reintentar</button></span></div>
+
+  <h3 style="margin-top:3rem">Rúbrica del taller</h3>
+  <div class="tw"><table class="t">
+   <thead><tr><th>Criterio</th><th>En proceso (1–2)</th><th>Logrado (3–4)</th><th>Destacado (5)</th></tr></thead>
+   <tbody>
+    <tr><td><strong>Identifica la operación CRUD</strong></td><td>Confunde UPDATE con DELETE.</td><td>Clasifica bien todas las situaciones de E1.</td><td>Explica por qué cada operación es la adecuada, incluido el borrado lógico.</td></tr>
+    <tr><td><strong>INSERT en orden</strong></td><td>Inserta el hijo antes que el padre o escribe el id a mano.</td><td>Inserta padre → hijo sin tocar el id.</td><td>Además usa INSERT múltiple, DEFAULT y RETURNING.</td></tr>
+    <tr><td><strong>UPDATE con WHERE y verificación</strong></td><td>Ejecuta UPDATE sin SELECT previo.</td><td>Escribe el SELECT de verificación antes de cada UPDATE.</td><td>Además usa expresiones (<code>precio * 1.10</code>) y varias columnas.</td></tr>
+    <tr><td><strong>DELETE y TRUNCATE</strong></td><td>Intenta borrar el padre antes que el hijo.</td><td>Borra en orden hijo → padre.</td><td>Explica las diferencias de TRUNCATE en PostgreSQL (RESTART IDENTITY, CASCADE).</td></tr>
+    <tr><td><strong>Transacciones</strong></td><td>No usa BEGIN o escribe BEGIN TRAN.</td><td>Agrupa operaciones con BEGIN … COMMIT y sabe usar ROLLBACK.</td><td>Reconoce una transacción abortada y usa SAVEPOINT.</td></tr>
+   </tbody>
+  </table></div>
+
+  <h3>✅ Autoevaluación</h3>
+  <p>Marca con honestidad lo que ya puedes hacer sin mirar los apuntes.</p>
+  <ul class="self" id="self"></ul>
+  <p class="res" id="selfRes" aria-live="polite"></p>
+ </div>
+</section>
+
+<!-- CHULETA -->
+<section class="unit" id="chuleta">
+ <div class="wrap">
+  <h2>Chuleta de esta entrega</h2>
+  <div class="tw"><table class="t">
+   <thead><tr><th>Operación</th><th>Sintaxis</th><th>Regla clave</th></tr></thead>
+   <tbody>
+    <tr><td><strong>INSERT</strong></td><td><code>INSERT INTO t (cols) VALUES (vals) RETURNING id;</code></td><td>Padre antes que hijo. No escribas el id.</td></tr>
+    <tr><td><strong>UPSERT</strong></td><td><code>… ON CONFLICT (col) DO NOTHING;</code></td><td>Evita el error de UNIQUE cuando la fila ya existe.</td></tr>
+    <tr><td><strong>UPDATE</strong></td><td><code>UPDATE t SET col = val WHERE cond;</code></td><td>Siempre con WHERE. SELECT antes.</td></tr>
+    <tr><td><strong>DELETE</strong></td><td><code>DELETE FROM t WHERE cond;</code></td><td>Siempre con WHERE. Hijo antes que padre.</td></tr>
+    <tr><td><strong>TRUNCATE</strong></td><td><code>TRUNCATE TABLE t RESTART IDENTITY;</code></td><td>Vacía todo. Sin RESTART IDENTITY el contador sigue.</td></tr>
+    <tr><td><strong>Transacción</strong></td><td><code>BEGIN; … COMMIT;</code> o <code>ROLLBACK;</code></td><td>Todo o nada. Si algo falla, queda abortada.</td></tr>
+   </tbody>
+  </table></div>
+
+  <h3>De SQL Server a PostgreSQL</h3>
+  <div class="tw"><table class="t">
+   <thead><tr><th>En SQL Server</th><th>En PostgreSQL</th></tr></thead>
+   <tbody>
+    <tr><td><code>id INT IDENTITY(1,1)</code></td><td><code>id INTEGER GENERATED ALWAYS AS IDENTITY</code></td></tr>
+    <tr><td><code>BIT</code> con 1 y 0</td><td><code>BOOLEAN</code> con <code>TRUE</code> y <code>FALSE</code></td></tr>
+    <tr><td><code>NVARCHAR(50)</code></td><td><code>VARCHAR(50)</code> o <code>TEXT</code> (todo es UTF-8)</td></tr>
+    <tr><td><code>SELECT SCOPE_IDENTITY();</code></td><td><code>INSERT … RETURNING id;</code></td></tr>
+    <tr><td><code>BEGIN TRAN</code></td><td><code>BEGIN;</code></td></tr>
+    <tr><td><code>GO</code></td><td>No existe: cada instrucción termina en <code>;</code></td></tr>
+    <tr><td><code>dbo.productos</code></td><td><code>productos</code> (esquema <code>public</code>)</td></tr>
+    <tr><td><code>[mi columna]</code></td><td><code>"mi columna"</code>; los textos siempre con comillas simples</td></tr>
+    <tr><td><code>(1 row affected)</code></td><td><code>INSERT 0 1</code>, <code>UPDATE 1</code>, <code>DELETE 1</code></td></tr>
+    <tr><td><code>Msg 547</code></td><td>SQLSTATE <code>23503</code> foreign_key_violation</td></tr>
+    <tr><td><code>TRUNCATE</code> reinicia el IDENTITY</td><td><code>TRUNCATE … RESTART IDENTITY</code></td></tr>
+    <tr><td><code>GETDATE()</code>, <code>ISNULL()</code>, <code>LEN()</code></td><td><code>NOW()</code>, <code>COALESCE()</code>, <code>LENGTH()</code></td></tr>
+    <tr><td><code>SELECT TOP 5 …</code></td><td><code>SELECT … LIMIT 5</code></td></tr>
+    <tr><td>SSMS</td><td>psql o pgAdmin</td></tr>
+   </tbody>
+  </table></div>
+
+  <h3>Mini glosario</h3>
+  <dl class="glos">
+   <dt>CRUD</dt><dd>Create, Read, Update, Delete: las cuatro operaciones fundamentales sobre los datos.</dd>
+   <dt>DML</dt><dd>Lenguaje de manipulación de datos: INSERT, UPDATE, DELETE y SELECT.</dd>
+   <dt>RETURNING</dt><dd>Cláusula de PostgreSQL que devuelve columnas de las filas insertadas, modificadas o borradas.</dd>
+   <dt>ON CONFLICT</dt><dd>Indica qué hacer cuando un INSERT choca con una restricción UNIQUE: nada, o actualizar.</dd>
+   <dt>EXCLUDED</dt><dd>Dentro de ON CONFLICT DO UPDATE, la fila que intentaste insertar.</dd>
+   <dt>IDENTITY</dt><dd>Columna numerada automáticamente. Con GENERATED ALWAYS no se puede escribir a mano.</dd>
+   <dt>TRUNCATE</dt><dd>Vacía una tabla completa de golpe. No admite WHERE.</dd>
+   <dt>RESTART IDENTITY</dt><dd>Opción de TRUNCATE que reinicia el contador del id a 1.</dd>
+   <dt>ON DELETE CASCADE</dt><dd>Opción de una FK: al borrar el padre se borran sus hijos automáticamente.</dd>
+   <dt>Borrado lógico</dt><dd>Marcar una fila como inactiva con UPDATE en vez de borrarla con DELETE.</dd>
+   <dt>Autocommit</dt><dd>Modo por defecto de psql: cada instrucción se confirma sola si no abriste BEGIN.</dd>
+   <dt>BEGIN · COMMIT · ROLLBACK</dt><dd>Abren, confirman y deshacen una transacción.</dd>
+   <dt>SAVEPOINT</dt><dd>Punto de guardado dentro de una transacción para deshacer solo una parte.</dd>
+   <dt>Transacción abortada</dt><dd>Estado tras un error dentro de BEGIN: todo se rechaza hasta ROLLBACK. psql lo marca con <code>=!#</code>.</dd>
+   <dt>SQLSTATE 23503</dt><dd>Código de error de violación de llave foránea.</dd>
+  </dl>
+
+  <div class="next"><div><strong>Próxima entrega: BD·108, SELECT con superpoderes</strong><p>Filtrar con WHERE, ordenar con ORDER BY, limitar con LIMIT y resumir con COUNT, SUM y AVG agrupando con GROUP BY.</p></div><a class="btn amber" href="#inicio">Volver arriba</a></div>
+ </div>
+</section>
+</main>
+<footer><div class="wrap">BD·107, El ciclo CRUD en PostgreSQL. Fase 3, poblar y modificar (DML) del tutorial de bases de datos. Versión 1.0, 2026. Permitida su reproducción con fines educativos citando la fuente. El laboratorio es un simulador educativo: cubre el DML de esta entrega; para todo lo demás usa tu propio servidor PostgreSQL.</div></footer>
+<script>
+/* ===== Mini motor PostgreSQL (simulado) para BD·107 ===== */
+class PgError extends Error{constructor(msg,o={}){super(msg);this.detail=o.detail;this.hint=o.hint;this.tip=o.tip;this.code=o.code||'42601';this.notices=o.notices}}
+const E=(m,o)=>new PgError(m,o);
+const DEF={def:true};
+const TODAY=(()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')})();
+const idCol={n:'id',t:'int',identity:true,notnull:true,dt:'integer',dd:'generated always as identity'};
+const SCHEMA={
+ categorias:{cols:[idCol,
+  {n:'nombre',t:'text',notnull:true,unique:true,max:50,dt:'character varying(50)'},
+  {n:'descripcion',t:'text',dt:'text'}]},
+ productos:{cols:[idCol,
+  {n:'nombre',t:'text',notnull:true,max:80,dt:'character varying(80)'},
+  {n:'categoria_id',t:'int',notnull:true,dt:'integer',fk:{table:'categorias',name:'productos_categoria_id_fkey',del:'restrict'}},
+  {n:'precio',t:'numeric',notnull:true,dt:'numeric(10,2)',check:v=>v>=0,tipCheck:'El precio no puede ser negativo (CHECK precio >= 0).'},
+  {n:'cantidad',t:'int',notnull:true,dt:'integer',def:()=>0,dd:'0',check:v=>v>=0,tipCheck:'La cantidad no puede quedar negativa (CHECK cantidad >= 0).'},
+  {n:'activo',t:'bool',notnull:true,dt:'boolean',def:()=>true,dd:'true'}]},
+ clientes:{cols:[idCol,
+  {n:'nombre',t:'text',notnull:true,max:80,dt:'character varying(80)'},
+  {n:'telefono',t:'text',max:20,dt:'character varying(20)'}]},
+ pedidos:{cols:[idCol,
+  {n:'cliente_id',t:'int',notnull:true,dt:'integer',fk:{table:'clientes',name:'pedidos_cliente_id_fkey',del:'restrict'}},
+  {n:'fecha',t:'date',notnull:true,dt:'date',def:()=>TODAY,dd:'CURRENT_DATE'},
+  {n:'total',t:'numeric',notnull:true,dt:'numeric(10,2)',def:()=>0,dd:'0',check:v=>v>=0,tipCheck:'El total no puede ser negativo.'}]},
+ detalle_pedido:{cols:[idCol,
+  {n:'pedido_id',t:'int',notnull:true,dt:'integer',fk:{table:'pedidos',name:'detalle_pedido_pedido_id_fkey',del:'cascade'}},
+  {n:'producto_id',t:'int',notnull:true,dt:'integer',fk:{table:'productos',name:'detalle_pedido_producto_id_fkey',del:'restrict'}},
+  {n:'cantidad',t:'int',notnull:true,dt:'integer',check:v=>v>0,tipCheck:'La cantidad de un detalle debe ser mayor que 0.'},
+  {n:'precio_unitario',t:'numeric',notnull:true,dt:'numeric(10,2)',check:v=>v>=0,tipCheck:'El precio unitario no puede ser negativo.'}]},
+ productos_respaldo:{cols:[idCol,
+  {n:'nombre',t:'text',max:80,dt:'character varying(80)'},
+  {n:'categoria_id',t:'int',dt:'integer'},
+  {n:'precio',t:'numeric',dt:'numeric(10,2)'},
+  {n:'cantidad',t:'int',dt:'integer'}]}
+};
+const TABLES=Object.keys(SCHEMA);
+const colOf=(t,n)=>SCHEMA[t].cols.find(c=>c.n===n);
+const RESERVED=new Set('select from where set values returning order by limit offset and or not insert update delete into on conflict do group having as table truncate begin commit rollback is in like ilike between union join inner left right cascade restart identity savepoint release using overriding distinct asc desc nulls continue restrict'.split(' '));
+const AGG=new Set(['count','sum','avg','min','max']);
+
+function tokenize(src){
+ const toks=[];let i=0;const n=src.length;
+ while(i<n){
+  const c=src[i];
+  if(/\s/.test(c)){i++;continue}
+  if(c==='-'&&src[i+1]==='-'){while(i<n&&src[i]!=='\n')i++;continue}
+  if(c==='/'&&src[i+1]==='*'){const j=src.indexOf('*/',i+2);i=j<0?n:j+2;continue}
+  const s=i;
+  if(c==="'"){let v='';i++;for(;;){if(i>=n)throw E('unterminated quoted string at or near "'+src.slice(s,s+12)+'"',{tip:'Falta cerrar una comilla simple. Cada texto abre y cierra con \'.'});if(src[i]==="'"){if(src[i+1]==="'"){v+="'";i+=2;continue}i++;break}v+=src[i++]}toks.push({t:'str',v,raw:src.slice(s,i),s,e:i});continue}
+  if(c==='"'){let v='';i++;while(i<n&&src[i]!=='"')v+=src[i++];if(i>=n)throw E('unterminated quoted identifier at or near "'+src.slice(s,s+12)+'"');i++;toks.push({t:'qid',v,raw:v,s,e:i});continue}
+  if(/[0-9]/.test(c)||(c==='.'&&/[0-9]/.test(src[i+1]||''))){let v='';while(i<n&&/[0-9.]/.test(src[i]))v+=src[i++];toks.push({t:'num',v:parseFloat(v),raw:v,s,e:i});continue}
+  if(/[A-Za-z_\u00C0-\u024F]/.test(c)){let v='';while(i<n&&/[A-Za-z0-9_$\u00C0-\u024F]/.test(src[i]))v+=src[i++];toks.push({t:'id',v:v.toLowerCase(),raw:v,s,e:i});continue}
+  const two=src.substr(i,2);
+  if(['<>','!=','<=','>=','||','::'].includes(two)){toks.push({t:'op',v:two,raw:two,s,e:i+2});i+=2;continue}
+  if('=<>+-*/%(),;.'.includes(c)){toks.push({t:'op',v:c,raw:c,s,e:i+1});i++;continue}
+  if(c==='@')throw E('syntax error at or near "@"',{tip:'Las variables con @ (como @@IDENTITY) son de SQL Server. Para obtener el id generado en PostgreSQL usa INSERT … RETURNING id;'});
+  if(c==='['||c===']')throw E('syntax error at or near "'+c+'"',{tip:'Los corchetes [nombre] son de SQL Server. En PostgreSQL escribe el nombre tal cual, o entre comillas dobles si tiene espacios.'});
+  throw E('syntax error at or near "'+c+'"');
+ }
+ return toks;
+}
+function splitStatements(toks){const out=[];let cur=[];for(const t of toks){if(t.t==='op'&&t.v===';'){if(cur.length)out.push(cur);cur=[]}else cur.push(t)}if(cur.length)out.push(cur);return out}
+
+class Parser{
+ constructor(t){this.t=t;this.i=0}
+ peek(o=0){return this.t[this.i+o]}
+ next(){return this.t[this.i++]}
+ atEnd(){return this.i>=this.t.length}
+ kw(k,o=0){const x=this.peek(o);return !!x&&x.t==='id'&&x.v===k}
+ op(v,o=0){const x=this.peek(o);return !!x&&x.t==='op'&&x.v===v}
+ eatKw(k){if(this.kw(k)){this.i++;return true}return false}
+ eatOp(v){if(this.op(v)){this.i++;return true}return false}
+ needKw(k,tip){if(!this.eatKw(k))this.fail(tip)}
+ needOp(v,tip){if(!this.eatOp(v))this.fail(tip)}
+ fail(tip){const x=this.peek();if(!x)throw E('syntax error at end of input',{tip:tip||'La instrucción quedó incompleta. Revisa que no falte nada antes del punto y coma.'});throw E('syntax error at or near "'+x.raw+'"',{tip})}
+ ident(){const x=this.peek();if(x&&(x.t==='id'||x.t==='qid')){this.i++;return{name:x.v,raw:x.raw,quoted:x.t==='qid'}}this.fail()}
+ tableName(){
+  const a=this.ident();
+  if(this.eatOp('.')){const b=this.ident();if(a.name!=='public')throw E('relation "'+a.raw+'.'+b.raw+'" does not exist',{code:'42P01',tip:a.name==='dbo'?'El esquema dbo es de SQL Server. En PostgreSQL las tablas viven en el esquema public: escribe solo el nombre de la tabla.':'Ese esquema no existe en tienda_db. Usa public o solo el nombre de la tabla.'});return b.name}
+  return a.name}
+ statement(){
+  const x=this.peek();if(!x)this.fail();
+  if(x.t!=='id')this.fail();
+  switch(x.v){
+   case 'insert':return this.pInsert();
+   case 'update':return this.pUpdate();
+   case 'delete':return this.pDelete();
+   case 'select':return this.pSelect();
+   case 'truncate':return this.pTruncate();
+   case 'begin':{this.i++;if(this.kw('tran'))throw E('syntax error at or near "'+this.peek().raw+'"',{tip:'BEGIN TRAN es de SQL Server. En PostgreSQL escribe solo BEGIN; (o BEGIN TRANSACTION;).'});this.eatKw('transaction')||this.eatKw('work');return{type:'begin'}}
+   case 'start':this.i++;this.needKw('transaction');return{type:'begin'};
+   case 'commit':case 'end':{this.i++;if(this.kw('tran'))throw E('syntax error at or near "'+this.peek().raw+'"',{tip:'En PostgreSQL basta con COMMIT;'});this.eatKw('transaction')||this.eatKw('work');return{type:'commit'}}
+   case 'rollback':case 'abort':{this.i++;if(this.kw('tran'))throw E('syntax error at or near "'+this.peek().raw+'"',{tip:'En PostgreSQL basta con ROLLBACK;'});this.eatKw('transaction')||this.eatKw('work');if(this.eatKw('to')){this.eatKw('savepoint');return{type:'rollbackto',name:this.ident().name}}return{type:'rollback'}}
+   case 'savepoint':this.i++;return{type:'savepoint',name:this.ident().name};
+   case 'release':this.i++;this.eatKw('savepoint');return{type:'release',name:this.ident().name};
+   case 'go':throw E('syntax error at or near "'+x.raw+'"',{tip:'GO es un separador de SSMS (SQL Server). En PostgreSQL cada instrucción termina con punto y coma: borra la línea GO.'});
+   case 'create':case 'alter':case 'drop':throw E(x.raw.toUpperCase()+' no está disponible en este laboratorio',{code:'0A000',tip:'Aquí se practica solo DML. Las tablas ya existen: escribe \\dt para verlas y \\d productos para ver sus columnas. El script DDL completo está debajo del laboratorio.'});
+   case 'with':throw E('WITH no está disponible en este laboratorio',{code:'0A000'});
+   default:this.fail();
+  }
+ }
+ pInsert(){
+  this.i++;
+  if(!this.kw('into'))this.fail('En PostgreSQL la palabra INTO es obligatoria: INSERT INTO tabla (columnas) VALUES (…);');
+  this.i++;
+  const table=this.tableName();let cols=null;
+  if(this.op('(')&&!this.kw('select',1)){this.i++;cols=[this.ident()];while(this.eatOp(','))cols.push(this.ident());this.needOp(')')}
+  let overriding=false;if(this.eatKw('overriding')){this.needKw('system');this.needKw('value');overriding=true}
+  let values=null,select=null,defaultValues=false;
+  if(this.eatKw('default')){this.needKw('values');defaultValues=true}
+  else if(this.eatKw('values')){values=[];do{this.needOp('(');const tup=[this.expr()];while(this.eatOp(','))tup.push(this.expr());this.needOp(')',this.peek()&&this.peek().t==='str'?'Parece que falta una coma entre dos valores.':undefined);values.push(tup)}while(this.eatOp(','))}
+  else if(this.kw('select'))select=this.pSelect();
+  else if(this.op('(')&&this.kw('select',1)){this.i++;select=this.pSelect();this.needOp(')')}
+  else this.fail('Después de la tabla y sus columnas va VALUES (…) o un SELECT.');
+  let conflict=null;
+  if(this.eatKw('on')){this.needKw('conflict');conflict={};if(this.eatOp('(')){conflict.col=this.ident().name;this.needOp(')')}this.needKw('do');if(this.eatKw('nothing'))conflict.action='nothing';else{this.needKw('update');this.needKw('set');conflict.action='update';conflict.sets=this.pSets();if(this.eatKw('where'))conflict.where=this.expr()}}
+  return{type:'insert',table,cols,overriding,values,select,defaultValues,conflict,returning:this.pReturning()};
+ }
+ pSets(){const s=[];do{const c=this.ident();this.needOp('=',this.kw('to')?undefined:'En SET se escribe columna = valor.');s.push({col:c,e:this.expr()})}while(this.eatOp(','));return s}
+ pReturning(){if(this.eatKw('returning'))return this.pItems();return null}
+ pUpdate(){
+  this.i++;const table=this.tableName();
+  this.needKw('set','Después de UPDATE tabla va SET columna = valor.');
+  const sets=this.pSets();
+  if(this.kw('from'))throw E('UPDATE … FROM no está disponible en este laboratorio',{code:'0A000',tip:'Usa una subconsulta: WHERE categoria_id = (SELECT id FROM categorias WHERE nombre = \'Fritos\')'});
+  let where=null;if(this.eatKw('where'))where=this.expr();
+  return{type:'update',table,sets,where,returning:this.pReturning()};
+ }
+ pDelete(){
+  this.i++;
+  if(!this.eatKw('from'))this.fail('En PostgreSQL se escribe DELETE FROM tabla WHERE …; (el FROM es obligatorio).');
+  const table=this.tableName();
+  if(this.kw('using'))throw E('DELETE … USING no está disponible en este laboratorio',{code:'0A000',tip:'Usa una subconsulta con IN (SELECT …).'});
+  let where=null;if(this.eatKw('where'))where=this.expr();
+  return{type:'delete',table,where,returning:this.pReturning()};
+ }
+ pTruncate(){
+  this.i++;this.eatKw('table');const tables=[this.tableName()];while(this.eatOp(','))tables.push(this.tableName());
+  let restart=false;if(this.eatKw('restart')){this.needKw('identity');restart=true}else if(this.eatKw('continue'))this.needKw('identity');
+  let cascade=false;if(this.eatKw('cascade'))cascade=true;else this.eatKw('restrict');
+  return{type:'truncate',tables,restart,cascade};
+ }
+ pItems(){const items=[];do{if(this.eatOp('*')){items.push({star:true});continue}const e=this.expr();let alias=null;if(this.eatKw('as'))alias=this.ident().name;else{const x=this.peek();if(x&&(x.t==='qid'||(x.t==='id'&&!RESERVED.has(x.v)))){alias=x.v;this.i++}}items.push({e,alias})}while(this.eatOp(','));return items}
+ pSelect(){
+  this.needKw('select');
+  if(this.kw('top'))throw E('syntax error at or near "'+(this.peek(1)?this.peek(1).raw:'TOP')+'"',{tip:'TOP es de SQL Server. En PostgreSQL se usa LIMIT al final: SELECT * FROM productos LIMIT 5;'});
+  const distinct=this.eatKw('distinct');
+  const items=this.pItems();
+  let from=null;
+  if(this.eatKw('from')){from=this.tableName();if(this.eatKw('as'))this.ident();else{const x=this.peek();if(x&&x.t==='id'&&!RESERVED.has(x.v))this.i++}
+   if(this.kw('join')||this.kw('inner')||this.kw('left')||this.kw('right')||this.op(','))throw E('JOIN no está disponible en este laboratorio',{code:'0A000',tip:'Aquí se consulta una tabla a la vez. Para cruzar tablas usa una subconsulta: WHERE categoria_id = (SELECT id FROM categorias WHERE nombre = \'Bebidas\').'})}
+  let where=null;if(this.eatKw('where'))where=this.expr();
+  if(this.kw('group'))throw E('GROUP BY no está disponible en este laboratorio',{code:'0A000',tip:'Lo verás a fondo en BD·108. Por ahora puedes usar agregados sin GROUP BY: SELECT count(*), avg(precio) FROM productos;'});
+  let order=[];if(this.eatKw('order')){this.needKw('by');do{const e=this.expr();let desc=false;if(this.eatKw('desc'))desc=true;else this.eatKw('asc');order.push({e,desc})}while(this.eatOp(','))}
+  let limit=null,offset=null;
+  for(let k=0;k<2;k++){if(this.eatKw('limit')){const x=this.next();if(!x||x.t!=='num')this.fail();limit=x.v}if(this.eatKw('offset')){const x=this.next();if(!x||x.t!=='num')this.fail();offset=x.v}}
+  return{type:'select',distinct,items,from,table:from,where,order,limit,offset};
+ }
+ expr(){return this.pOr()}
+ pOr(){let a=this.pAnd();while(this.eatKw('or'))a={k:'or',a,b:this.pAnd()};return a}
+ pAnd(){let a=this.pNot();while(this.eatKw('and'))a={k:'and',a,b:this.pNot()};return a}
+ pNot(){if(this.eatKw('not'))return{k:'not',a:this.pNot()};return this.pCmp()}
+ pCmp(){
+  let a=this.pAdd();
+  for(;;){
+   const x=this.peek();
+   if(x&&x.t==='op'&&['=','<>','!=','<','>','<=','>='].includes(x.v)){this.i++;a={k:'cmp',op:x.v==='!='?'<>':x.v,a,b:this.pAdd()};continue}
+   if(this.kw('is')){this.i++;const neg=this.eatKw('not');if(this.eatKw('null'))a={k:'isnull',a,neg};else if(this.eatKw('true'))a={k:'isbool',a,v:true,neg};else if(this.eatKw('false'))a={k:'isbool',a,v:false,neg};else this.fail();continue}
+   const save=this.i;let neg=false;
+   if(this.kw('not')&&(this.kw('in',1)||this.kw('like',1)||this.kw('ilike',1)||this.kw('between',1))){this.i++;neg=true}
+   if(this.eatKw('in')){this.needOp('(');if(this.kw('select')){const st=this.pSelect();this.needOp(')');a={k:'insub',a,st,neg}}else{const list=[this.expr()];while(this.eatOp(','))list.push(this.expr());this.needOp(')');a={k:'in',a,list,neg}}continue}
+   if(this.kw('like')||this.kw('ilike')){const ci=this.next().v==='ilike';a={k:'like',a,b:this.pAdd(),neg,ci};continue}
+   if(this.eatKw('between')){const lo=this.pAdd();this.needKw('and');const hi=this.pAdd();a={k:'between',a,lo,hi,neg};continue}
+   this.i=save;break;
+  }
+  return a;
+ }
+ pAdd(){let a=this.pMul();for(;;){if(this.op('+')||this.op('-')||this.op('||')){const o=this.next().v;a={k:'bin',op:o,a,b:this.pMul()}}else break}return a}
+ pMul(){let a=this.pUn();for(;;){if(this.op('*')||this.op('/')||this.op('%')){const o=this.next().v;a={k:'bin',op:o,a,b:this.pUn()}}else break}return a}
+ pUn(){if(this.eatOp('-'))return{k:'neg',a:this.pUn()};if(this.eatOp('+'))return this.pUn();return this.pPost()}
+ pPost(){let a=this.pPrim();while(this.eatOp('::')){const ty=this.ident().name;if(this.eatOp('(')){while(!this.atEnd()&&!this.eatOp(')'))this.i++}a={k:'cast',a,ty}}return a}
+ pPrim(){
+  const x=this.peek();if(!x)this.fail();
+  if(x.t==='num'){this.i++;return{k:'lit',v:x.v}}
+  if(x.t==='str'){this.i++;return{k:'lit',v:x.v}}
+  if(x.t==='op'&&x.v==='('){this.i++;if(this.kw('select')){const st=this.pSelect();this.needOp(')');return{k:'sub',st}}const e=this.expr();this.needOp(')');return e}
+  if(x.t==='qid'){this.i++;if(this.eatOp('.')){const c=this.ident();return{k:'col',q:x.v,name:c.name,raw:c.raw,quoted:c.quoted}}return{k:'col',name:x.v,raw:x.v,quoted:true}}
+  if(x.t==='id'){
+   const v=x.v;
+   if(v==='true'||v==='false'){this.i++;return{k:'lit',v:v==='true'}}
+   if(v==='null'){this.i++;return{k:'lit',v:null}}
+   if(v==='default'){this.i++;return{k:'default'}}
+   if(v==='current_date'){this.i++;return{k:'fn',name:'current_date',args:[]}}
+   if(this.op('(',1)){
+    this.i+=2;
+    if(this.eatOp('*')){this.needOp(')');return{k:'fn',name:v,raw:x.raw,star:true,args:[]}}
+    const args=[];if(!this.op(')')){this.eatKw('distinct');args.push(this.expr());while(this.eatOp(','))args.push(this.expr())}
+    this.needOp(')');return{k:'fn',name:v,raw:x.raw,args};
+   }
+   if(RESERVED.has(v))this.fail(v==='from'?'Antes de FROM falta la lista de columnas (o *).':undefined);
+   this.i++;
+   if(this.eatOp('.')){if(this.eatOp('*'))return{k:'star'};const c=this.ident();return{k:'col',q:v,name:c.name,raw:c.raw,quoted:c.quoted}}
+   return{k:'col',name:v,raw:x.raw};
+  }
+  this.fail();
+ }
+}
+
+const isNumStr=s=>typeof s==='string'&&/^\s*[+-]?(\d+\.?\d*|\.\d+)\s*$/.test(s);
+const r2=v=>Math.round(v*100)/100;
+function fmtVal(v,t){
+ if(v===null||v===undefined)return '';
+ if(typeof v==='boolean')return v?'t':'f';
+ if(t==='numeric'&&typeof v==='number')return v.toFixed(2);
+ if(typeof v==='number'){return Number.isInteger(v)?String(v):String(Math.round(v*10000)/10000)}
+ return String(v);
+}
+
+class Engine{
+ constructor(seed){this.reset(seed||'libre')}
+ reset(seed){
+  this.db={};this.seq={};for(const t of TABLES){this.db[t]=[];this.seq[t]=0}
+  (SEEDS[seed]||SEEDS.libre)(this);
+  this.tx=null;this.log=[];this.committed=[];this.txN=0;this.changed={};this.lastTable=null;
+ }
+ seedRow(t,o){const row={};for(const c of SCHEMA[t].cols){if(c.identity)row.id=++this.seq[t];else row[c.n]=c.n in o?o[c.n]:(c.def?c.def():null)}this.db[t].push(row)}
+ clone(){const o={};for(const t of TABLES)o[t]=this.db[t].map(r=>({...r}));return o}
+ restore(s){this.db=s}
+ prompt(cont){return 'tienda_db'+(cont?'-':'=')+(this.tx?(this.tx.aborted?'!':'*'):'')+'#'}
+ T(t){if(!SCHEMA[t])throw E('relation "'+t+'" does not exist',{code:'42P01',tip:'No hay ninguna tabla con ese nombre. Escribe \\dt para ver las tablas de tienda_db.'});return SCHEMA[t]}
+ mark(t,id,kind,cols){const c=this.changed[t]||(this.changed[t]={nw:new Set(),upd:new Map(),del:0});if(kind==='new')c.nw.add(id);else if(kind==='upd'){const s=c.upd.get(id)||new Set();(cols||[]).forEach(x=>s.add(x));c.upd.set(id,s)}else c.del+=kind}
+
+ run(src){
+  const out=[];this.changed={};
+  const segs=[];let buf='';
+  for(const line of src.split('\n')){if(/^\s*\\/.test(line)){if(buf.trim())segs.push({sql:buf});buf='';segs.push({meta:line.trim()})}else buf+=line+'\n'}
+  if(buf.trim())segs.push({sql:buf});
+  for(const sg of segs){
+   if(sg.meta){out.push({prompt:this.prompt(),text:sg.meta,meta:true,r:this.meta(sg.meta)});continue}
+   let toks;
+   try{toks=tokenize(sg.sql)}catch(e){out.push({prompt:this.prompt(),text:sg.sql.trim(),error:e});if(this.tx)this.tx.aborted=true;this.log.push({type:'error',ok:false,code:e.code});continue}
+   for(const st of splitStatements(toks)){
+    const text=sg.sql.slice(st[0].s,st[st.length-1].e);
+    const res={prompt:this.prompt(),text};
+    try{res.r=this.exec(st)}catch(e){if(!(e instanceof PgError)){console.error(e);e=E('error interno del simulador: '+e.message)}res.error=e}
+    out.push(res);
+   }
+  }
+  return out;
+ }
+ exec(toks){
+  let st;
+  const L={ok:false,txId:this.tx?this.tx.id:null};
+  try{const p=new Parser(toks);st=p.statement();if(!p.atEnd())p.fail()}
+  catch(e){if(this.tx)this.tx.aborted=true;L.type='error';L.code=e.code;this.log.push(L);throw e}
+  Object.assign(L,{type:st.type,table:st.table||(st.tables&&st.tables[0])||null,tables:st.tables,hasWhere:!!st.where,returning:!!st.returning,fromSelect:!!st.select,restart:!!st.restart,cascade:!!st.cascade});
+  const ctl=['begin','commit','rollback','rollbackto','savepoint','release'].includes(st.type);
+  if(this.tx&&this.tx.aborted&&!['commit','rollback','rollbackto'].includes(st.type)){
+   L.code='25P02';this.log.push(L);
+   throw E('current transaction is aborted, commands ignored until end of transaction block',{code:'25P02',tip:'Un error anterior dejó esta transacción abortada (fíjate en el ! del prompt). PostgreSQL ignora todo hasta que escribas ROLLBACK; o ROLLBACK TO SAVEPOINT nombre;'});
+  }
+  if(ctl){const r=this['x_'+st.type](st);L.ok=true;L.hadTx=r.hadTx;this.log.push(L);return r}
+  const snap=this.clone();
+  try{const r=this['x_'+st.type](st);L.ok=true;L.count=r.count;this.log.push(L);if(st.type!=='select'||!this.lastTable)this.lastTable=L.table;return r}
+  catch(e){this.restore(snap);this.changed={};if(this.tx)this.tx.aborted=true;L.code=e.code;this.log.push(L);throw e}
+ }
+ /* --- transacciones --- */
+ x_begin(){if(this.tx)return{tag:'BEGIN',warnings:['there is already a transaction in progress']};this.tx={id:++this.txN,snap:this.clone(),sps:[],aborted:false};return{tag:'BEGIN',note:{kind:'info',text:'Transacción abierta: el prompt muestra * y los cambios son provisionales hasta COMMIT.'}}}
+ x_commit(){if(!this.tx)return{tag:'COMMIT',warnings:['there is no transaction in progress']};const t=this.tx;this.tx=null;if(t.aborted){this.restore(t.snap);this.changed={};return{tag:'ROLLBACK',hadTx:true,note:{kind:'warn',text:'La transacción estaba abortada, así que COMMIT se convirtió en ROLLBACK: no se guardó nada.'}}}this.committed.push(t.id);return{tag:'COMMIT',hadTx:true}}
+ x_rollback(){if(!this.tx)return{tag:'ROLLBACK',warnings:['there is no transaction in progress']};this.restore(this.tx.snap);this.tx=null;this.changed={};return{tag:'ROLLBACK',hadTx:true,note:{kind:'info',text:'Todos los cambios desde BEGIN se deshicieron. Ojo: los contadores de id (secuencias) no retroceden.'}}}
+ x_savepoint(st){if(!this.tx)throw E('SAVEPOINT can only be used in transaction blocks',{code:'25P01',tip:'Primero abre una transacción con BEGIN;'});this.tx.sps.push({name:st.name,snap:this.clone()});return{tag:'SAVEPOINT'}}
+ x_rollbackto(st){if(!this.tx)throw E('ROLLBACK TO SAVEPOINT can only be used in transaction blocks',{code:'25P01'});const i=this.tx.sps.map(s=>s.name).lastIndexOf(st.name);if(i<0){this.tx.aborted=true;throw E('savepoint "'+st.name+'" does not exist',{code:'3B001'})}const sp=this.tx.sps[i];this.tx.sps=this.tx.sps.slice(0,i+1);this.restore(Object.fromEntries(TABLES.map(t=>[t,sp.snap[t].map(r=>({...r}))])));this.tx.aborted=false;this.changed={};return{tag:'ROLLBACK'}}
+ x_release(st){if(!this.tx)throw E('RELEASE SAVEPOINT can only be used in transaction blocks',{code:'25P01'});const i=this.tx.sps.map(s=>s.name).lastIndexOf(st.name);if(i<0)throw E('savepoint "'+st.name+'" does not exist',{code:'3B001'});this.tx.sps=this.tx.sps.slice(0,i);return{tag:'RELEASE'}}
+ /* --- tipos y restricciones --- */
+ coerce(v,c,t){
+  if(v===null||v===undefined)return null;
+  switch(c.t){
+   case 'int':
+    if(typeof v==='boolean')throw E('column "'+c.n+'" is of type integer but expression is of type boolean',{code:'42804',hint:'You will need to rewrite or cast the expression.'});
+    if(typeof v==='number')return Math.round(v);
+    if(/^\s*[+-]?\d+\s*$/.test(v))return parseInt(v,10);
+    throw E('invalid input syntax for type integer: "'+v+'"',{code:'22P02',tip:'La columna '+c.n+' espera un número entero.'+(c.fk?' Es una FK: escribe el id del padre (un número), no su nombre.':'')});
+   case 'numeric':
+    if(typeof v==='boolean')throw E('column "'+c.n+'" is of type numeric but expression is of type boolean',{code:'42804'});
+    if(typeof v==='number')return r2(v);
+    if(isNumStr(v))return r2(parseFloat(v));
+    throw E('invalid input syntax for type numeric: "'+v+'"',{code:'22P02',tip:'Escribe los números sin comillas, sin $ y sin separador de miles; los decimales van con punto: 3500 o 3500.50'});
+   case 'text':{const s=typeof v==='boolean'?(v?'true':'false'):String(v);if(c.max&&s.length>c.max)throw E('value too long for type character varying('+c.max+')',{code:'22001',tip:'Ese texto supera los '+c.max+' caracteres permitidos.'});return s}
+   case 'bool':
+    if(typeof v==='boolean')return v;
+    if(typeof v==='number')throw E('column "'+c.n+'" is of type boolean but expression is of type integer',{code:'42804',hint:'You will need to rewrite or cast the expression.',tip:'En SQL Server usabas BIT con 1 y 0. En PostgreSQL la columna es BOOLEAN: escribe TRUE o FALSE.'});
+    {const s=String(v).trim().toLowerCase();if(['t','true','y','yes','on','1'].includes(s))return true;if(['f','false','n','no','off','0'].includes(s))return false}
+    throw E('invalid input syntax for type boolean: "'+v+'"',{code:'22P02',tip:'Usa TRUE o FALSE.'});
+   case 'date':
+    if(typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v.trim()))return v.trim();
+    throw E('invalid input syntax for type date: "'+v+'"',{code:'22007',tip:'Las fechas van entre comillas simples con formato AAAA-MM-DD: \'2026-10-28\'.'});
+  }
+  return v;
+ }
+ rowStr(t,row){return '('+SCHEMA[t].cols.map(c=>row[c.n]===null||row[c.n]===undefined?'null':fmtVal(row[c.n],c.t)).join(', ')+')'}
+ checkRow(t,row){
+  for(const c of SCHEMA[t].cols){
+   if(c.notnull&&(row[c.n]===null||row[c.n]===undefined))throw E('null value in column "'+c.n+'" of relation "'+t+'" violates not-null constraint',{code:'23502',detail:'Failing row contains '+this.rowStr(t,row)+'.',tip:'La columna '+c.n+' es obligatoria (NOT NULL): inclúyela con un valor.'});
+   if(c.check&&row[c.n]!==null&&!c.check(row[c.n]))throw E('new row for relation "'+t+'" violates check constraint "'+t+'_'+c.n+'_check"',{code:'23514',detail:'Failing row contains '+this.rowStr(t,row)+'.',tip:c.tipCheck});
+  }
+ }
+ uniqueViolation(t,row,skip){
+  const keys=[{col:'id',name:t+'_pkey'}].concat(SCHEMA[t].cols.filter(c=>c.unique).map(c=>({col:c.n,name:t+'_'+c.n+'_key'})));
+  for(const k of keys){if(row[k.col]===null)continue;const other=this.db[t].find(r=>r!==row&&r!==skip&&r[k.col]===row[k.col]);if(other)return{...k,other}}
+  return null;
+ }
+ uniqueErr(t,u,row){return E('duplicate key value violates unique constraint "'+u.name+'"',{code:'23505',detail:'Key ('+u.col+')=('+row[u.col]+') already exists.',tip:u.col==='id'?'Ya existe una fila con ese id. Seguramente lo escribiste a mano con OVERRIDING SYSTEM VALUE y el contador no se enteró.':'Ya existe una fila con ese '+u.col+' y la columna es UNIQUE. Si quieres evitar el error usa ON CONFLICT ('+u.col+') DO NOTHING.'})}
+ checkFks(t,row,only){
+  for(const c of SCHEMA[t].cols){if(!c.fk||row[c.n]===null)continue;if(only&&!only.includes(c.n))continue;
+   if(!this.db[c.fk.table].some(p=>p.id===row[c.n]))throw E('insert or update on table "'+t+'" violates foreign key constraint "'+c.fk.name+'"',{code:'23503',detail:'Key ('+c.n+')=('+row[c.n]+') is not present in table "'+c.fk.table+'".',tip:'Padre primero: no hay ninguna fila en '+c.fk.table+' con id = '+row[c.n]+'. Insértala antes o usa un id que exista.'})}
+ }
+ /* --- INSERT --- */
+ x_insert(st){
+  const t=st.table,S=this.T(t),all=S.cols;
+  let cols;
+  if(st.cols){const seen=new Set();cols=st.cols.map(c=>{const col=all.find(x=>x.n===c.name);if(!col)throw E('column "'+c.name+'" of relation "'+t+'" does not exist',{code:'42703',tip:c.quoted?'Las comillas dobles son para nombres de columnas; revisa mayúsculas y espacios. Escribe \\d '+t+' para ver las columnas.':'La tabla '+t+' no tiene esa columna. Escribe \\d '+t+' para ver sus columnas.'});if(seen.has(col.n))throw E('column "'+col.n+'" specified more than once',{code:'42701'});seen.add(col.n);return col})}
+  else cols=all;
+  let tuples;
+  if(st.defaultValues){tuples=[[]];cols=[]}
+  else if(st.values){
+   for(const tup of st.values){if(tup.length>cols.length)throw E('INSERT has more expressions than target columns',{code:'42601',tip:'Hay más valores que columnas. Cada columna de la lista necesita exactamente un valor.'});if(st.cols&&tup.length<cols.length)throw E('INSERT has more target columns than expressions',{code:'42601',tip:'Listaste más columnas que valores. Cuenta: deben coincidir uno a uno.'})}
+   tuples=st.values.map(tup=>tup.map(e=>e.k==='default'?DEF:this.ev(e,{})));
+  } else {
+   const r=this.selectRows(st.select);
+   if(r.cols.length>cols.length)throw E('INSERT has more expressions than target columns',{code:'42601'});
+   if(st.cols&&r.cols.length<cols.length)throw E('INSERT has more target columns than expressions',{code:'42601'});
+   tuples=r.data;
+  }
+  const ins=[],ret=[];let count=0;
+  for(const tup of tuples){
+   const row={};
+   for(const c of all){
+    const i=cols.indexOf(c);let v=i>=0&&i<tup.length?tup[i]:DEF;
+    if(c.identity){
+     if(v!==DEF){if(!st.overriding)throw E('cannot insert a non-DEFAULT value into column "'+c.n+'"',{code:'428C9',detail:'Column "'+c.n+'" is an identity column defined as GENERATED ALWAYS.',hint:'Use OVERRIDING SYSTEM VALUE to override.',tip:'No escribas el id: PostgreSQL lo genera solo. Quita id de la lista de columnas y su valor de VALUES.'});row.id=this.coerce(v,c,t)}
+     else row.id=++this.seq[t];
+     continue;
+    }
+    if(v===DEF)v=c.def?c.def():null;
+    row[c.n]=this.coerce(v,c,t);
+   }
+   this.checkRow(t,row);
+   const u=this.uniqueViolation(t,row);
+   if(u){
+    if(st.conflict&&(!st.conflict.col||st.conflict.col===u.col)){
+     if(st.conflict.col&&!(st.conflict.col==='id'||(colOf(t,st.conflict.col)||{}).unique))throw E('there is no unique or exclusion constraint matching the ON CONFLICT specification',{code:'42P10'});
+     if(st.conflict.action==='nothing')continue;
+     const ex=u.other;
+     if(ins.includes(ex))throw E('ON CONFLICT DO UPDATE command cannot affect row a second time',{code:'21000'});
+     const ctx={row:ex,table:t,excluded:row};
+     if(st.conflict.where&&this.ev(st.conflict.where,ctx)!==true)continue;
+     this.applySets(t,[ex],st.conflict.sets,ctx);
+     count++;ret.push(ex);continue;
+    }
+    if(st.conflict&&st.conflict.col&&!(st.conflict.col==='id'||(colOf(t,st.conflict.col)||{}).unique))throw E('there is no unique or exclusion constraint matching the ON CONFLICT specification',{code:'42P10'});
+    throw this.uniqueErr(t,u,row);
+   }
+   this.checkFks(t,row);
+   this.db[t].push(row);ins.push(row);ret.push(row);count++;this.mark(t,row.id,'new');
+  }
+  const r={tag:'INSERT 0 '+count,count};
+  if(st.returning)r.table=this.project(st.returning,ret,t);
+  if(st.conflict&&count<tuples.length&&st.conflict.action==='nothing')r.note={kind:'info',text:(tuples.length-count)+' fila(s) ya existían: ON CONFLICT DO NOTHING las saltó sin error.'};
+  return r;
+ }
+ applySets(t,rows,sets,baseCtx){
+  const cols=sets.map(s=>{const c=colOf(t,s.col.name);if(!c)throw E('column "'+s.col.name+'" of relation "'+t+'" does not exist',{code:'42703',tip:'Escribe \\d '+t+' para ver sus columnas.'});if(c.identity&&s.e.k!=='default')throw E('column "id" can only be updated to DEFAULT',{code:'428C9',detail:'Column "id" is an identity column defined as GENERATED ALWAYS.',tip:'El id no se modifica: identifica a la fila para siempre.'});return c});
+  const plan=rows.map(r=>{const ctx=baseCtx?{...baseCtx,row:r}:{row:r,table:t};const nv={...r};sets.forEach((s,i)=>{const c=cols[i];nv[c.n]=s.e.k==='default'?(c.identity?r.id:(c.def?c.def():null)):this.coerce(this.ev(s.e,ctx),c,t)});return[r,nv]});
+  for(const[r,nv]of plan){this.checkRow(t,nv);this.checkFks(t,nv,cols.filter(c=>c.fk).map(c=>c.n))}
+  for(const[r,nv]of plan){const changed=cols.filter(c=>r[c.n]!==nv[c.n]).map(c=>c.n);Object.assign(r,nv);this.mark(t,r.id,'upd',changed.length?changed:cols.map(c=>c.n))}
+  for(const[r]of plan){const u=this.uniqueViolation(t,r);if(u)throw this.uniqueErr(t,u,r)}
+ }
+ /* --- UPDATE --- */
+ x_update(st){
+  const t=st.table;this.T(t);
+  const rows=this.filter(t,st.where);
+  this.applySets(t,rows,st.sets);
+  const r={tag:'UPDATE '+rows.length,count:rows.length};
+  if(st.returning)r.table=this.project(st.returning,rows,t);
+  if(!st.where&&rows.length>1)r.note={kind:'warn',text:'Sin WHERE: se modificaron TODAS las filas de '+t+' ('+rows.length+'). PostgreSQL no avisa; hizo exactamente lo que le pediste.'};
+  else if(st.where&&rows.length===0)r.note={kind:'info',text:'Ninguna fila cumplió el WHERE, así que no cambió nada. Revisa la condición con un SELECT.'};
+  return r;
+ }
+ /* --- DELETE --- */
+ x_delete(st){
+  const t=st.table;this.T(t);
+  const victims=this.filter(t,st.where);
+  const del=new Map();const cascaded={};
+  const go=(tb,rows,top)=>{
+   const set=del.get(tb)||new Set();del.set(tb,set);rows.forEach(r=>set.add(r));
+   for(const ct of TABLES)for(const c of SCHEMA[ct].cols){
+    if(!c.fk||c.fk.table!==tb)continue;
+    for(const r of rows){
+     const kids=this.db[ct].filter(k=>k[c.n]===r.id&&!(del.get(ct)&&del.get(ct).has(k)));
+     if(!kids.length)continue;
+     if(c.fk.del==='cascade'){cascaded[ct]=(cascaded[ct]||0)+kids.length;go(ct,kids,false)}
+     else throw E('update or delete on table "'+tb+'" violates foreign key constraint "'+c.fk.name+'" on table "'+ct+'"',{code:'23503',detail:'Key (id)=('+r.id+') is still referenced from table "'+ct+'".',tip:'Hijo antes que padre: hay filas en '+ct+' que apuntan a esta fila de '+tb+'. Bórralas (o cámbialas) primero.'});
+    }
+   }
+  };
+  go(t,victims,true);
+  for(const[tb,set]of del){this.db[tb]=this.db[tb].filter(r=>!set.has(r));this.mark(tb,null,set.size)}
+  const r={tag:'DELETE '+victims.length,count:victims.length};
+  if(st.returning)r.table=this.project(st.returning,victims,t);
+  const notes=[];
+  if(Object.keys(cascaded).length)notes.push('ON DELETE CASCADE también borró '+Object.entries(cascaded).map(([k,v])=>v+' fila(s) de '+k).join(' y ')+'.');
+  if(!st.where&&victims.length>1){r.note={kind:'warn',text:'Sin WHERE: se borraron TODAS las filas de '+t+'. '+notes.join(' ')};}
+  else if(notes.length)r.note={kind:'info',text:notes.join(' ')};
+  else if(st.where&&!victims.length)r.note={kind:'info',text:'Ninguna fila cumplió el WHERE: no se borró nada.'};
+  return r;
+ }
+ /* --- TRUNCATE --- */
+ x_truncate(st){
+  st.tables.forEach(t=>this.T(t));
+  const set=new Set(st.tables);const notices=[];
+  let again=true;
+  while(again){again=false;
+   for(const ct of TABLES)for(const c of SCHEMA[ct].cols){
+    if(!c.fk||!set.has(c.fk.table)||set.has(ct))continue;
+    if(st.cascade){set.add(ct);notices.push('truncate cascades to table "'+ct+'"');again=true}
+    else throw E('cannot truncate a table referenced in a foreign key constraint',{code:'0A000',detail:'Table "'+ct+'" references "'+c.fk.table+'".',hint:'Truncate table "'+ct+'" at the same time, or use TRUNCATE ... CASCADE.',tip:'TRUNCATE no revisa fila por fila: si otra tabla tiene una FK hacia esta, PostgreSQL se niega aunque esa tabla esté vacía.'});
+   }
+  }
+  for(const t of set){const n=this.db[t].length;this.db[t]=[];this.mark(t,null,n);if(st.restart)this.seq[t]=0}
+  const r={tag:'TRUNCATE TABLE',notices};
+  if(!st.restart){const t=st.tables[0];r.note={kind:'info',text:'El contador del id NO se reinició: el próximo id de '+t+' será '+(this.seq[t]+1)+'. Para volver a 1 usa TRUNCATE … RESTART IDENTITY.'}}
+  else r.note={kind:'info',text:'Contador reiniciado: el próximo id será 1.'};
+  return r;
+ }
+ /* --- SELECT --- */
+ x_select(st){const r=this.selectRows(st);return{table:r,count:r.data.length}}
+ filter(t,where){const rows=this.db[t];if(!where)return rows.slice();return rows.filter(r=>{const v=this.ev(where,{row:r,table:t});if(v!==null&&typeof v!=='boolean')throw E('argument of WHERE must be type boolean, not type '+(typeof v==='number'?'integer':'text'),{code:'42804',tip:'El WHERE necesita una condición, por ejemplo WHERE id = 3.'});return v===true})}
+ selectRows(st){
+  const t=st.from;if(t)this.T(t);
+  let rows=t?this.filter(t,st.where):[{}];
+  if(!t&&st.where&&this.ev(st.where,{})!==true)rows=[];
+  if(st.order.length){
+   const keyRows=rows.map(r=>({r,k:st.order.map(o=>{if(o.e.k==='lit'&&typeof o.e.v==='number'){const it=this.expandItems(st.items,t)[o.e.v-1];if(!it)throw E('ORDER BY position '+o.e.v+' is not in select list',{code:'42P10'});return it.star?r[it.col]:this.ev(it.e,{row:r,table:t})}const al=st.items.find(i=>i.alias&&o.e.k==='col'&&!o.e.q&&i.alias===o.e.name);return this.ev(al?al.e:o.e,{row:r,table:t})})}));
+   keyRows.sort((a,b)=>{for(let i=0;i<st.order.length;i++){const x=a.k[i],y=b.k[i];let c;if(x===y)c=0;else if(x===null)c=1;else if(y===null)c=-1;else c=x<y?-1:1;if(st.order[i].desc)c=-c;if(c)return c}return 0});
+   rows=keyRows.map(k=>k.r);
+  }
+  let res;
+  if(st.items.some(i=>!i.star&&this.hasAgg(i.e)))res=this.aggregate(st.items,rows,t);
+  else res=this.project(st.items,rows,t);
+  if(st.distinct){const seen=new Set();res.data=res.data.filter(d=>{const k=JSON.stringify(d);if(seen.has(k))return false;seen.add(k);return true})}
+  if(st.offset)res.data=res.data.slice(st.offset);
+  if(st.limit!==null&&st.limit!==undefined)res.data=res.data.slice(0,st.limit);
+  return res;
+ }
+ expandItems(items,t){const out=[];for(const it of items){if(it.star){if(!t)throw E('SELECT * with no tables specified is not valid',{code:'42601'});SCHEMA[t].cols.forEach(c=>out.push({star:true,col:c.n,type:c.t}))}else out.push(it)}return out}
+ itemName(it){if(it.star)return it.col;if(it.alias)return it.alias;const e=it.e;if(e.k==='col')return e.name;if(e.k==='fn')return e.name;if(e.k==='cast')return this.itemName({e:e.a});return '?column?'}
+ itemType(it,t){if(it.star)return it.type;const e=it.e;if(e.k==='col'&&t&&colOf(t,e.name))return colOf(t,e.name).t;if(e.k==='fn'&&['sum','min','max'].includes(e.name)&&e.args[0]&&e.args[0].k==='col'&&t&&colOf(t,e.args[0].name))return colOf(t,e.args[0].name).t;return null}
+ project(items,rows,t){const its=this.expandItems(items,t);return{cols:its.map(i=>this.itemName(i)),types:its.map(i=>this.itemType(i,t)),data:rows.map(r=>its.map(i=>i.star?r[i.col]:this.ev(i.e,{row:r,table:t})))}}
+ hasAgg(e){if(!e||typeof e!=='object')return false;if(e.k==='fn'&&AGG.has(e.name))return true;return['a','b','lo','hi'].some(k=>this.hasAgg(e[k]))||(e.args||[]).some(a=>this.hasAgg(a))||(e.list||[]).some(a=>this.hasAgg(a))}
+ aggregate(items,rows,t){
+  const its=this.expandItems(items,t);
+  if(its.some(i=>i.star))throw E('column "'+t+'.id" must appear in the GROUP BY clause or be used in an aggregate function',{code:'42803',tip:'No puedes mezclar * con count, sum, avg… Usa solo funciones de agregado.'});
+  const sub=e=>{
+   if(e.k==='fn'&&AGG.has(e.name)){
+    if(e.star){if(e.name!=='count')throw E('function '+e.name+'(*) does not exist',{code:'42883'});return{k:'lit',v:rows.length}}
+    const vals=rows.map(r=>this.ev(e.args[0],{row:r,table:t})).filter(v=>v!==null);
+    let v;
+    if(e.name==='count')v=vals.length;
+    else if(!vals.length)v=null;
+    else if(e.name==='sum')v=r2(vals.reduce((a,b)=>a+Number(b),0));
+    else if(e.name==='avg')v=vals.reduce((a,b)=>a+Number(b),0)/vals.length;
+    else if(e.name==='min')v=vals.reduce((a,b)=>b<a?b:a);
+    else v=vals.reduce((a,b)=>b>a?b:a);
+    return{k:'lit',v};
+   }
+   if(e.k==='col')throw E('column "'+(t?t+'.':'')+e.name+'" must appear in the GROUP BY clause or be used in an aggregate function',{code:'42803',tip:'Cuando usas count, sum, avg… no puedes mezclar columnas sueltas sin GROUP BY (lo verás en BD·108).'});
+   const c={...e};for(const k of['a','b','lo','hi'])if(c[k])c[k]=sub(c[k]);if(c.args)c.args=c.args.map(sub);if(c.list)c.list=c.list.map(sub);return c;
+  };
+  return{cols:its.map(i=>this.itemName(i)),types:its.map(i=>this.itemType(i,t)),data:[its.map(i=>this.ev(sub(i.e),{}))]};
+ }
+ colErr(n,t){const nm=n.quoted?n.name:n.name;return E('column "'+nm+'" does not exist',{code:'42703',tip:n.quoted?'En PostgreSQL las comillas dobles son para nombres de columnas o tablas. Si querías escribir un texto, usa comillas simples: \''+n.name+'\'.':(t?'La tabla '+t+' no tiene esa columna (escribe \\d '+t+' para verlas). Si era un texto, va entre comillas simples: \''+n.raw+'\'.':'Si querías escribir un texto, va entre comillas simples: \''+n.raw+'\'.')})}
+ cmpVals(a,b){
+  let x=a,y=b;
+  if(typeof x==='boolean'&&typeof y==='number'||typeof y==='boolean'&&typeof x==='number')throw E('operator does not exist: boolean = integer',{code:'42883',hint:'No operator matches the given name and argument types. You might need to add explicit type casts.',tip:'activo es BOOLEAN: compáralo con TRUE o FALSE, no con 1 o 0.'});
+  if(typeof x==='number'&&typeof y==='string'){if(isNumStr(y))y=+y;else throw E('invalid input syntax for type integer: "'+y+'"',{code:'22P02',tip:'Estás comparando un número con un texto. ¿Querías comparar con otra columna, por ejemplo nombre?'})}
+  if(typeof y==='number'&&typeof x==='string'){if(isNumStr(x))x=+x;else throw E('invalid input syntax for type integer: "'+x+'"',{code:'22P02',tip:'Estás comparando un texto con un número.'})}
+  if(typeof x==='boolean'&&typeof y==='string')y=this.coerce(y,{t:'bool',n:'?'});
+  if(typeof y==='boolean'&&typeof x==='string')x=this.coerce(x,{t:'bool',n:'?'});
+  return x===y?0:(x<y?-1:1);
+ }
+ bool(v,what){if(v===null||typeof v==='boolean')return v;throw E('argument of '+what+' must be type boolean, not type '+(typeof v==='number'?'integer':'text'),{code:'42804'})}
+ ev(n,ctx){
+  switch(n.k){
+   case 'lit':return n.v;
+   case 'default':throw E('DEFAULT is not allowed in this context',{code:'42601'});
+   case 'star':throw E('syntax error at or near "*"');
+   case 'col':{
+    if(n.q==='excluded'){if(!ctx.excluded)throw E('missing FROM-clause entry for table "excluded"',{code:'42P01'});if(!(n.name in ctx.excluded))throw this.colErr(n);return ctx.excluded[n.name]}
+    if(!ctx.table||!ctx.row)throw this.colErr(n);
+    if(!colOf(ctx.table,n.name))throw this.colErr(n,ctx.table);
+    return ctx.row[n.name];
+   }
+   case 'neg':{const v=this.ev(n.a,ctx);if(v===null)return null;return -Number(v)}
+   case 'bin':{
+    const a=this.ev(n.a,ctx),b=this.ev(n.b,ctx);
+    if(a===null||b===null)return null;
+    if(n.op==='||')return String(typeof a==='boolean'?(a?'true':'false'):a)+String(typeof b==='boolean'?(b?'true':'false'):b);
+    const x=typeof a==='string'?(isNumStr(a)?+a:NaN):a,y=typeof b==='string'?(isNumStr(b)?+b:NaN):b;
+    if(typeof x!=='number'||typeof y!=='number'||isNaN(x)||isNaN(y))throw E('operator does not exist: '+(typeof a==='number'?'numeric':'text')+' '+n.op+' '+(typeof b==='number'?'numeric':'text'),{code:'42883',tip:'Solo puedes hacer cuentas con números. Para unir textos usa ||.'});
+    if(n.op==='+')return x+y;if(n.op==='-')return x-y;if(n.op==='*')return x*y;
+    if(y===0)throw E('division by zero',{code:'22012'});
+    if(n.op==='%')return x%y;
+    return Number.isInteger(x)&&Number.isInteger(y)?Math.trunc(x/y):x/y;
+   }
+   case 'cmp':{const a=this.ev(n.a,ctx),b=this.ev(n.b,ctx);if(a===null||b===null)return null;const c=this.cmpVals(a,b);switch(n.op){case '=':return c===0;case '<>':return c!==0;case '<':return c<0;case '>':return c>0;case '<=':return c<=0;case '>=':return c>=0}}
+   case 'and':{const a=this.bool(this.ev(n.a,ctx),'AND'),b=this.bool(this.ev(n.b,ctx),'AND');if(a===false||b===false)return false;if(a===null||b===null)return null;return true}
+   case 'or':{const a=this.bool(this.ev(n.a,ctx),'OR'),b=this.bool(this.ev(n.b,ctx),'OR');if(a===true||b===true)return true;if(a===null||b===null)return null;return false}
+   case 'not':{const a=this.bool(this.ev(n.a,ctx),'NOT');return a===null?null:!a}
+   case 'isnull':{const v=this.ev(n.a,ctx);return n.neg?v!==null:v===null}
+   case 'isbool':{const v=this.ev(n.a,ctx);const r=v===n.v;return n.neg?!r:r}
+   case 'like':{const a=this.ev(n.a,ctx),b=this.ev(n.b,ctx);if(a===null||b===null)return null;const re=new RegExp('^'+String(b).replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/%/g,'.*').replace(/_/g,'.')+'$',n.ci?'is':'s');const r=re.test(String(a));return n.neg?!r:r}
+   case 'between':{const a=this.ev(n.a,ctx),lo=this.ev(n.lo,ctx),hi=this.ev(n.hi,ctx);if(a===null||lo===null||hi===null)return null;const r=this.cmpVals(a,lo)>=0&&this.cmpVals(a,hi)<=0;return n.neg?!r:r}
+   case 'in':case 'insub':{
+    const a=this.ev(n.a,ctx);if(a===null)return null;
+    let list;if(n.k==='in')list=n.list.map(e=>this.ev(e,ctx));else{const r=this.selectRows(n.st);if(r.cols.length!==1)throw E('subquery has too many columns',{code:'42601'});list=r.data.map(d=>d[0])}
+    let hasNull=false;for(const v of list){if(v===null){hasNull=true;continue}if(this.cmpVals(a,v)===0)return !n.neg}
+    if(hasNull)return null;return n.neg;
+   }
+   case 'sub':{const r=this.selectRows(n.st);if(r.cols.length!==1)throw E('subquery must return only one column',{code:'42601'});if(r.data.length>1)throw E('more than one row returned by a subquery used as an expression',{code:'21000',tip:'La subconsulta devolvió varias filas y aquí se espera un solo valor. Hazla más específica o usa IN (SELECT …).'});return r.data.length?r.data[0][0]:null}
+   case 'cast':{const v=this.ev(n.a,ctx);if(v===null)return null;const ty=n.ty;if(['int','integer','int4','bigint','smallint'].includes(ty))return this.coerce(v,{t:'int',n:'?'});if(['numeric','decimal','real','float','money'].includes(ty))return this.coerce(v,{t:'numeric',n:'?'});if(['text','varchar','character'].includes(ty))return this.coerce(v,{t:'text',n:'?'});if(['boolean','bool'].includes(ty))return this.coerce(v,{t:'bool',n:'?'});if(ty==='date')return this.coerce(v,{t:'date',n:'?'});throw E('type "'+ty+'" does not exist',{code:'42704'})}
+   case 'fn':{
+    const nm=n.name;
+    if(AGG.has(nm))throw E('aggregate functions are not allowed '+(ctx.row?'in WHERE':'here'),{code:'42803',tip:'Las funciones de agregado van en la lista del SELECT, no en el WHERE.'});
+    const a=(n.args||[]).map(x=>this.ev(x,ctx));
+    switch(nm){
+     case 'current_date':return TODAY;
+     case 'now':return TODAY+' '+new Date().toTimeString().slice(0,8);
+     case 'lower':return a[0]===null?null:String(a[0]).toLowerCase();
+     case 'upper':return a[0]===null?null:String(a[0]).toUpperCase();
+     case 'length':return a[0]===null?null:String(a[0]).length;
+     case 'trim':return a[0]===null?null:String(a[0]).trim();
+     case 'abs':return a[0]===null?null:Math.abs(a[0]);
+     case 'round':{if(a[0]===null)return null;const d=a[1]||0;const f=Math.pow(10,d);return Math.round(Number(a[0])*f)/f}
+     case 'coalesce':{for(const v of a)if(v!==null)return v;return null}
+     case 'concat':return a.map(v=>v===null?'':(typeof v==='boolean'?(v?'t':'f'):v)).join('');
+    }
+    const tips={getdate:'GETDATE() es de SQL Server. En PostgreSQL usa NOW() o CURRENT_DATE.',isnull:'ISNULL() es de SQL Server. En PostgreSQL usa COALESCE(valor, reemplazo).',len:'LEN() es de SQL Server. En PostgreSQL usa LENGTH().',scope_identity:'SCOPE_IDENTITY() es de SQL Server. En PostgreSQL agrega RETURNING id al final del INSERT.',newid:'NEWID() es de SQL Server.',last_insert_id:'LAST_INSERT_ID() es de MySQL. En PostgreSQL usa INSERT … RETURNING id.'};
+    throw E('function '+nm+'('+a.map(v=>typeof v==='number'?'integer':typeof v==='boolean'?'boolean':'unknown').join(', ')+') does not exist',{code:'42883',hint:'No function matches the given name and argument types. You might need to add explicit type casts.',tip:tips[nm]});
+   }
+  }
+  throw E('expresión no soportada');
+ }
+ meta(cmd){
+  const parts=cmd.split(/\s+/);const c=parts[0];
+  if(c==='\\dt'||c==='\\d'&&!parts[1])return{table:{cols:['Schema','Name','Type','Owner'],types:[],data:TABLES.map(t=>['public',t,'table','postgres'])},tag:'('+TABLES.length+' rows)',bare:true};
+  if(c==='\\d'||c==='\\d+'){const t=parts[1].toLowerCase().replace(/;$/,'');if(!SCHEMA[t])return{error:E('Did not find any relation named "'+parts[1]+'".',{code:'meta'})};
+   return{title:'Table "public.'+t+'"',table:{cols:['Column','Type','Nullable','Default'],types:[],data:SCHEMA[t].cols.map(c=>[c.n,c.dt,c.notnull?'not null':'',c.dd||''])},extra:SCHEMA[t].cols.filter(c=>c.fk).map(c=>'FK '+c.fk.name+': ('+c.n+') REFERENCES '+c.fk.table+'(id)'+(c.fk.del==='cascade'?' ON DELETE CASCADE':'')).concat(SCHEMA[t].cols.filter(c=>c.check).map(c=>'CHECK '+t+'_'+c.n+'_check')),bare:true}}
+  if(c==='\\?'||c==='\\h')return{text:'Comandos del laboratorio:\n  \\dt          lista las tablas\n  \\d tabla     describe una tabla\nSQL disponible: INSERT (VALUES, SELECT, RETURNING, ON CONFLICT), UPDATE, DELETE, TRUNCATE, SELECT sencillo (WHERE, ORDER BY, LIMIT, agregados), BEGIN, COMMIT, ROLLBACK, SAVEPOINT.'};
+  if(c==='\\q')return{text:'Este laboratorio no se cierra: sigue practicando.'};
+  if(c==='\\c')return{text:'You are now connected to database "tienda_db" as user "postgres".'};
+  return{error:E('invalid command '+c,{code:'meta',tip:'Escribe \\? para ver los comandos disponibles.'})};
+ }
+ catId(n){const r=this.db.categorias.find(r=>r.nombre.trim().toLowerCase()===n.toLowerCase());return r?r.id:null}
+ prod(n){return this.db.productos.find(r=>r.nombre.trim().toLowerCase()===n.toLowerCase())}
+}
+const SEED={
+ cats(e){['Bebidas','Fritos','Snacks'].forEach(n=>e.seedRow('categorias',{nombre:n}))},
+ prods(e){[['Gaseosa 400 ml',1,3500,48,true],['Empanada',2,2500,30,true],['Café',1,1800,0,false],['Arepa',2,2000,15,true],['Papas fritas',3,4000,25,true]].forEach(([nombre,categoria_id,precio,cantidad,activo])=>e.seedRow('productos',{nombre,categoria_id,precio,cantidad,activo}))},
+ ventas(e){e.seedRow('clientes',{nombre:'Andrés Gómez',telefono:'310-555-0101'});e.seedRow('clientes',{nombre:'Laura Pérez',telefono:null});e.seedRow('pedidos',{cliente_id:1,fecha:'2026-10-27',total:9500});e.seedRow('detalle_pedido',{pedido_id:1,producto_id:1,cantidad:2,precio_unitario:3500});e.seedRow('detalle_pedido',{pedido_id:1,producto_id:2,cantidad:1,precio_unitario:2500})}
+};
+const SEEDS={
+ libre:e=>{SEED.cats(e);SEED.prods(e);SEED.ventas(e)},
+ vacia:e=>{},
+ base:e=>{SEED.cats(e);SEED.prods(e)}
+};
+if(typeof module!=='undefined')module.exports={Engine,fmtVal,SCHEMA,TABLES};
+(function(){
+const $=s=>document.querySelector(s),$$=s=>Array.from(document.querySelectorAll(s));
+const store={get(k,d){try{const v=localStorage.getItem('bd107pg:'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('bd107pg:'+k,JSON.stringify(v))}catch(e){}}};
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const KW=new Set('SELECT INSERT INTO VALUES UPDATE SET DELETE FROM WHERE AND OR NOT NULL TRUE FALSE DEFAULT RETURNING ON CONFLICT DO NOTHING EXCLUDED TRUNCATE TABLE RESTART IDENTITY CASCADE BEGIN COMMIT ROLLBACK SAVEPOINT RELEASE TO ORDER BY LIMIT OFFSET DESC ASC IN IS LIKE ILIKE BETWEEN AS CREATE DATABASE REFERENCES PRIMARY KEY UNIQUE CHECK GENERATED ALWAYS INTEGER VARCHAR NUMERIC BOOLEAN TEXT DATE CURRENT_DATE OVERRIDING SYSTEM VALUE TRANSACTION COUNT SUM AVG MAX MIN SERIAL DISTINCT START TRAN GO TOP'.split(' '));
+function hl(src){
+ const re=/(--[^\n]*)|('(?:[^']|'')*'?)|("[^"\n]*"?)|(\b\d+(?:\.\d+)?\b)|([A-Za-z_\u00C0-\u024F][\w\u00C0-\u024F]*)|(\\[a-z+?]+)/g;
+ let out='',last=0,m;
+ while((m=re.exec(src))){out+=esc(src.slice(last,m.index));const s=esc(m[0]);
+  if(m[1])out+='<span class="c">'+s+'</span>';else if(m[2])out+='<span class="s">'+s+'</span>';else if(m[3])out+='<span class="q">'+s+'</span>';else if(m[4])out+='<span class="n">'+s+'</span>';else if(m[6])out+='<span class="k">'+s+'</span>';else if(KW.has(m[5].toUpperCase()))out+='<span class="k">'+s+'</span>';else out+=s;
+  last=re.lastIndex}
+ return out+esc(src.slice(last));
+}
+$$('pre[data-sql]').forEach(p=>{p.dataset.src=p.textContent.replace(/\s+$/,'');p.innerHTML=hl(p.dataset.src)});
+
+/* ===== laboratorio ===== */
+const ORIG={1:3500,2:2500,3:1800,4:2000,5:4000};
+const ok=l=>l.ok;
+const RETOS={
+ libre:{name:'Libre',title:'Modo libre',seed:'libre',intro:'tienda_db con datos de ejemplo: 3 categorías, 5 productos, 2 clientes y un pedido. Prueba aquí los ejemplos de las lecciones con el botón “Probar en el laboratorio”.',tasks:[]},
+ e2:{name:'E2',title:'E2 · Llena la tienda vacía',seed:'vacia',time:'20 min · individual',
+  intro:'Las tablas existen pero están vacías. Inserta los datos respetando el orden padre → hijo.',
+  steps:['Inserta las categorías Bebidas, Fritos y Snacks con un solo INSERT múltiple.','Inserta al menos 5 productos: 2 de Bebidas, 2 de Fritos y 1 de Snacks. No escribas el id ni la columna activo.','Agrega RETURNING a algún INSERT para ver qué id generó PostgreSQL.','Verifica el resultado con un SELECT sobre productos.'],
+  tasks:[
+   ['Existen las categorías Bebidas, Fritos y Snacks.',e=>['Bebidas','Fritos','Snacks'].every(n=>e.catId(n))],
+   ['Hay al menos 2 productos de Bebidas, 2 de Fritos y 1 de Snacks.',e=>{const c=n=>e.db.productos.filter(p=>p.categoria_id===e.catId(n)).length;return e.catId('Bebidas')&&c('Bebidas')>=2&&c('Fritos')>=2&&c('Snacks')>=1}],
+   ['Usaste un INSERT múltiple (varias filas en una instrucción).',e=>e.log.some(l=>ok(l)&&l.type==='insert'&&l.count>=2)],
+   ['Usaste RETURNING en algún INSERT.',e=>e.log.some(l=>ok(l)&&l.type==='insert'&&l.returning)],
+   ['Verificaste con un SELECT sobre productos después de insertar.',e=>{let i=-1;e.log.forEach((l,j)=>{if(ok(l)&&l.type==='insert'&&l.table==='productos')i=j});return i>=0&&e.log.some((l,j)=>j>i&&ok(l)&&l.type==='select'&&l.table==='productos')}]
+  ],
+  solution:`-- 1. Padre primero: categorías (INSERT múltiple)
+INSERT INTO categorias (nombre)
+VALUES ('Bebidas'), ('Fritos'), ('Snacks')
+RETURNING id, nombre;
+
+-- 2. Luego los hijos: productos (sin id; activo queda TRUE por DEFAULT)
+INSERT INTO productos (nombre, categoria_id, precio, cantidad)
+VALUES ('Gaseosa 400 ml', 1, 3500, 48),
+       ('Café', 1, 1800, 0),
+       ('Empanada', 2, 2500, 30),
+       ('Arepa', 2, 2000, 15),
+       ('Papas fritas', 3, 4000, 25)
+RETURNING id, nombre, activo;
+
+-- 3. Verificar
+SELECT * FROM categorias;
+SELECT * FROM productos;`},
+ e3:{name:'E3',title:'E3 · UPDATE y DELETE seguros',seed:'base',time:'25 min · parejas',
+  intro:'Antes de cada UPDATE o DELETE escribe el SELECT con el mismo WHERE. El laboratorio lo revisa.',
+  steps:['Sube el precio de la Gaseosa 400 ml de 3500 a 3800.','Aumenta 10 % el precio de todos los productos de Fritos.','Cambia la cantidad de Empanadas de 30 a 25.','Borra el producto Café.','Intenta borrar la categoría Bebidas: debe fallar porque aún tiene productos.'],
+  tasks:[
+   ['La Gaseosa 400 ml cuesta 3800.',e=>{const p=e.prod('Gaseosa 400 ml');return p&&p.precio===3800}],
+   ['Los Fritos subieron 10 % (Empanada 2750, Arepa 2200).',e=>{const a=e.prod('Empanada'),b=e.prod('Arepa');return a&&b&&a.precio===2750&&b.precio===2200}],
+   ['Quedan 25 Empanadas.',e=>{const p=e.prod('Empanada');return p&&p.cantidad===25}],
+   ['El Café ya no existe.',e=>!e.prod('Café')&&e.db.productos.length>0],
+   ['Intentaste borrar Bebidas y PostgreSQL lo impidió (23503).',e=>e.catId('Bebidas')&&e.log.some(l=>l.type==='delete'&&l.table==='categorias'&&l.code==='23503')],
+   ['Cada UPDATE o DELETE exitoso fue precedido por un SELECT de la misma tabla.',e=>{let prev=null,n=0,good=true;for(const l of e.log){if(!l.ok||['begin','commit','rollback','savepoint','release','rollbackto'].includes(l.type))continue;if(l.type==='update'||l.type==='delete'){n++;if(!(prev&&prev.type==='select'&&prev.table===l.table))good=false}prev=l}return n>0&&good}]
+  ],
+  solution:`-- 1. Gaseosa a 3800
+SELECT * FROM productos WHERE nombre = 'Gaseosa 400 ml';
+UPDATE productos SET precio = 3800 WHERE nombre = 'Gaseosa 400 ml';
+
+-- 2. Fritos +10 %
+SELECT * FROM productos WHERE categoria_id = 2;
+UPDATE productos SET precio = precio * 1.10 WHERE categoria_id = 2;
+
+-- 3. Empanadas: 25
+SELECT * FROM productos WHERE nombre = 'Empanada';
+UPDATE productos SET cantidad = 25 WHERE nombre = 'Empanada';
+
+-- 4. Borrar el Café
+SELECT * FROM productos WHERE nombre = 'Café';
+DELETE FROM productos WHERE nombre = 'Café';
+
+-- 5. Intentar borrar Bebidas (debe fallar con 23503)
+DELETE FROM categorias WHERE nombre = 'Bebidas';`},
+ e4:{name:'E4',title:'E4 · Un día en la tienda escolar',seed:'base',time:'35 min · equipos',
+  intro:'Reto integrador. Hay categorías y productos, pero todavía no hay clientes ni pedidos.',
+  steps:['Llega una clienta nueva: Valentina Ruiz.','Valentina hace un pedido con 2 productos. Registra el pedido y su detalle dentro de una transacción.','La Gaseosa 400 ml sube de 3500 a 4000.','Se vendieron 5 Empanadas: la cantidad baja de 30 a 25 (usa una expresión).','Se agotó el Café: bórralo.','Llega un producto nuevo: Jugo de mango, en Bebidas.','Verifica con SELECT el estado final de las tablas.'],
+  tasks:[
+   ['Valentina Ruiz está registrada.',e=>!!e.db.clientes.find(c=>/valentina ruiz/i.test(c.nombre))],
+   ['Valentina tiene un pedido con al menos 2 líneas de detalle.',e=>{const c=e.db.clientes.find(c=>/valentina ruiz/i.test(c.nombre));if(!c)return false;return e.db.pedidos.some(p=>p.cliente_id===c.id&&e.db.detalle_pedido.filter(d=>d.pedido_id===p.id).length>=2)}],
+   ['El pedido se confirmó dentro de una transacción (BEGIN … COMMIT).',e=>e.committed.some(id=>e.log.some(l=>l.txId===id&&ok(l)&&l.type==='insert'&&l.table==='pedidos'))],
+   ['La Gaseosa 400 ml cuesta 4000.',e=>{const p=e.prod('Gaseosa 400 ml');return p&&p.precio===4000}],
+   ['Quedan 25 Empanadas.',e=>{const p=e.prod('Empanada');return p&&p.cantidad===25}],
+   ['El Café ya no existe.',e=>!e.prod('Café')&&e.db.productos.length>0],
+   ['Existe Jugo de mango en la categoría Bebidas.',e=>{const p=e.prod('Jugo de mango');return p&&p.categoria_id===e.catId('Bebidas')}]
+  ],
+  solution:`-- 1. Nueva clienta (padre)
+INSERT INTO clientes (nombre, telefono)
+VALUES ('Valentina Ruiz', '310-111-2222')
+RETURNING id;                        -- id = 1
+
+-- 2. Pedido y detalle, todo o nada
+BEGIN;
+INSERT INTO pedidos (cliente_id, total)
+VALUES (1, 6000)
+RETURNING id;                        -- id = 1
+INSERT INTO detalle_pedido (pedido_id, producto_id, cantidad, precio_unitario)
+VALUES (1, 1, 1, 3500),              -- Gaseosa
+       (1, 2, 1, 2500);              -- Empanada
+COMMIT;
+
+-- 3. Sube la Gaseosa
+SELECT * FROM productos WHERE id = 1;
+UPDATE productos SET precio = 4000 WHERE id = 1;
+
+-- 4. Se vendieron 5 Empanadas
+SELECT * FROM productos WHERE id = 2;
+UPDATE productos SET cantidad = cantidad - 5 WHERE id = 2
+RETURNING nombre, cantidad;
+
+-- 5. Se agotó el Café
+SELECT * FROM productos WHERE nombre = 'Café';
+DELETE FROM productos WHERE nombre = 'Café';
+
+-- 6. Producto nuevo
+INSERT INTO productos (nombre, categoria_id, precio, cantidad)
+VALUES ('Jugo de mango', 1, 3000, 22);
+
+-- 7. Estado final
+SELECT * FROM clientes;
+SELECT * FROM pedidos;
+SELECT * FROM detalle_pedido;
+SELECT * FROM productos;`},
+ e5:{name:'E5',title:'E5 · Simulacro de desastre',seed:'base',time:'15 min · individual',
+  intro:'Vas a provocar a propósito el error más temido y a salvarte con una transacción.',
+  steps:['Abre una transacción.','Ejecuta UPDATE productos SET precio = 0; sin WHERE.','Comprueba el daño con un SELECT, todavía dentro de la transacción.','Deshaz todo con ROLLBACK.','Comprueba con un SELECT que los precios volvieron.'],
+  tasks:[
+   ['Abriste una transacción con BEGIN.',e=>e.log.some(l=>ok(l)&&l.type==='begin')],
+   ['Ejecutaste un UPDATE sin WHERE sobre productos dentro de la transacción.',e=>e.log.some(l=>ok(l)&&l.type==='update'&&l.table==='productos'&&!l.hasWhere&&l.txId)],
+   ['Comprobaste el daño con un SELECT dentro de la transacción.',e=>{const i=e.log.findIndex(l=>ok(l)&&l.type==='update'&&!l.hasWhere&&l.txId);return i>=0&&e.log.some((l,j)=>j>i&&ok(l)&&l.type==='select'&&l.txId===e.log[i].txId)}],
+   ['Deshiciste los cambios con ROLLBACK.',e=>e.log.some(l=>ok(l)&&l.type==='rollback'&&l.hadTx)],
+   ['Los precios volvieron a su valor original y lo comprobaste con SELECT.',e=>{if(e.tx)return false;const i=e.log.map(l=>ok(l)&&l.type==='rollback'&&l.hadTx).lastIndexOf(true);return i>=0&&e.log.some((l,j)=>j>i&&ok(l)&&l.type==='select'&&l.table==='productos'&&!l.txId)&&e.db.productos.length===5&&e.db.productos.every(p=>ORIG[p.id]===p.precio)}]
+  ],
+  solution:`BEGIN;
+
+-- El desastre: UPDATE sin WHERE
+UPDATE productos SET precio = 0;
+
+-- Compruébalo antes de que sea tarde
+SELECT nombre, precio FROM productos;
+
+-- El botón de deshacer
+ROLLBACK;
+
+-- Todo volvió a la normalidad
+SELECT nombre, precio FROM productos;`},
+ e6:{name:'E6',title:'E6 · Respaldo y TRUNCATE',seed:'base',time:'15 min · parejas',
+  intro:'Practica INSERT … SELECT y comprueba en carne propia cómo se comporta TRUNCATE en PostgreSQL.',
+  steps:['Copia los productos activos a productos_respaldo con INSERT … SELECT.','Vacía productos_respaldo reiniciando su contador.','Vuelve a copiar los productos activos y comprueba que el primer id es 1.','Intenta vaciar categorias con TRUNCATE (sin CASCADE) y lee el error.'],
+  tasks:[
+   ['Copiaste productos a productos_respaldo con INSERT … SELECT.',e=>e.log.some(l=>ok(l)&&l.type==='insert'&&l.table==='productos_respaldo'&&l.fromSelect&&l.count>0)],
+   ['Vaciaste productos_respaldo con TRUNCATE … RESTART IDENTITY.',e=>e.log.some(l=>ok(l)&&l.type==='truncate'&&l.restart&&(l.tables||[]).includes('productos_respaldo'))],
+   ['Después de reiniciar volviste a copiar y el primer id es 1.',e=>{const i=e.log.findIndex(l=>ok(l)&&l.type==='truncate'&&l.restart&&(l.tables||[]).includes('productos_respaldo'));return i>=0&&e.log.some((l,j)=>j>i&&ok(l)&&l.type==='insert'&&l.table==='productos_respaldo')&&e.db.productos_respaldo.some(r=>r.id===1)}],
+   ['Intentaste TRUNCATE categorias y PostgreSQL lo impidió.',e=>e.log.some(l=>l.type==='truncate'&&!l.ok&&(l.tables||[]).includes('categorias')&&l.code==='0A000')],
+   ['categorias y productos siguen intactos (nada de CASCADE).',e=>e.db.categorias.length===3&&e.db.productos.length===5]
+  ],
+  solution:`-- 1. Copiar los productos activos al respaldo
+INSERT INTO productos_respaldo (nombre, categoria_id, precio, cantidad)
+SELECT nombre, categoria_id, precio, cantidad
+FROM productos
+WHERE activo = TRUE
+RETURNING id, nombre;
+
+-- 2. Vaciar el respaldo y reiniciar su contador
+TRUNCATE TABLE productos_respaldo RESTART IDENTITY;
+
+-- 3. Copiar otra vez: el primer id vuelve a ser 1
+INSERT INTO productos_respaldo (nombre, categoria_id, precio, cantidad)
+SELECT nombre, categoria_id, precio, cantidad
+FROM productos
+WHERE activo = TRUE
+RETURNING id, nombre;
+
+-- 4. Intentar vaciar categorias: PostgreSQL lo impide
+TRUNCATE TABLE categorias;`}
+};
+const RIDS=Object.keys(RETOS);
+let done=store.get('done',{});
+let reto='libre',eng=new Engine('libre'),curTab='productos';
+const ed=$('#ed'),edhl=$('#edhl'),con=$('#con');
+function syncHl(){edhl.innerHTML=hl(ed.value)+'\n '}
+ed.addEventListener('input',syncHl);
+ed.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();runSQL()}});
+$('#run').addEventListener('click',runSQL);
+$('#clr').addEventListener('click',()=>{ed.value='';syncHl();ed.focus()});
+$('#rst').addEventListener('click',()=>loadReto(reto,true));
+
+function welcome(){
+ con.innerHTML='';
+ const d=document.createElement('div');d.className='blk';
+ d.innerHTML='<pre><span class="dim">psql (16) · laboratorio simulado de BD·107\nYou are now connected to database "tienda_db" as user "postgres".\nEscribe \\? para ver la ayuda.</span></pre>'+(reto!=='libre'?'<div class="tip info">Datos cargados para '+esc(RETOS[reto].title)+'. Sigue los pasos del panel de la derecha.</div>':'');
+ con.appendChild(d);
+}
+function tableHTML(t,types){
+ let h='<table><thead><tr>'+t.cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>';
+ for(const row of t.data)h+='<tr>'+row.map((v,i)=>{const isNum=typeof v==='number';return '<td'+(isNum?' class="num"':'')+'>'+esc(fmtVal(v,(types||t.types||[])[i]))+'</td>'}).join('')+'</tr>';
+ return h+'</tbody></table>';
+}
+function renderRes(res){
+ const b=document.createElement('div');b.className='blk';
+ const cont=res.prompt.replace('=','-');
+ const lines=res.text.split('\n');
+ let h='<pre>'+lines.map((l,i)=>'<span class="pr">'+esc(i?cont:res.prompt)+'</span> '+(res.meta?esc(l):hl(l))).join('\n')+(res.meta?'':'')+'</pre>';
+ const err=res.error||(res.r&&res.r.error);
+ if(err){
+  h+='<pre class="e"><b>ERROR:</b>  '+esc(err.message)+(err.detail?'\n<span class="d">DETAIL:  '+esc(err.detail)+'</span>':'')+(err.hint?'\n<span class="d">HINT:  '+esc(err.hint)+'</span>':'')+'</pre>';
+  if(err.tip)h+='<div class="tip">💡 '+esc(err.tip)+'</div>';
+ } else if(res.r){
+  const r=res.r;
+  (r.warnings||[]).forEach(w=>h+='<pre class="w">WARNING:  '+esc(w)+'</pre>');
+  (r.notices||[]).forEach(w=>h+='<pre class="nt">NOTICE:  '+esc(w)+'</pre>');
+  if(r.title)h+='<pre class="ttl">'+esc(r.title)+'</pre>';
+  if(r.table){h+=tableHTML(r.table);if(!r.bare)h+='<pre class="rows">('+r.table.data.length+' row'+(r.table.data.length===1?'':'s')+')</pre>'}
+  if(r.extra&&r.extra.length)h+='<pre class="rows">'+r.extra.map(esc).join('\n')+'</pre>';
+  if(r.text)h+='<pre class="dim">'+esc(r.text)+'</pre>';
+  if(r.tag&&!(r.bare&&!r.tag.startsWith('(')))h+='<pre class="'+(r.bare?'rows':'tag')+'">'+(r.table&&!r.bare?'\n':'')+esc(r.tag)+'</pre>';
+  if(r.note)h+='<div class="tip '+(r.note.kind||'')+'">'+(r.note.kind==='warn'?'⚠️ ':'ℹ️ ')+esc(r.note.text)+'</div>';
+ }
+ b.innerHTML=h;return b;
+}
+function runSQL(){
+ const src=ed.value;if(!src.trim()){ed.focus();return}
+ const out=eng.run(src);
+ out.forEach(r=>con.appendChild(renderRes(r)));
+ while(con.children.length>60)con.removeChild(con.firstChild);
+ con.scrollTop=con.scrollHeight;
+ const ch=Object.keys(eng.changed);if(ch.length)curTab=ch[ch.length-1];
+ renderTables();renderState();renderChecks();
+}
+function renderState(){
+ const s=$('#txstate');s.className='txstate';
+ if(!eng.tx)s.textContent='Sin transacción';
+ else if(eng.tx.aborted){s.textContent='Transacción abortada: ROLLBACK';s.classList.add('abort')}
+ else{s.textContent='Transacción abierta (BEGIN)';s.classList.add('open')}
+}
+function renderTables(){
+ const tabs=$('#tabs');tabs.innerHTML='';
+ TABLES.forEach(t=>{const b=document.createElement('button');b.type='button';b.setAttribute('role','tab');b.setAttribute('aria-selected',t===curTab);b.innerHTML=esc(t)+' <span class="n">'+eng.db[t].length+'</span>';if(eng.changed[t])b.classList.add('chg');b.onclick=()=>{curTab=t;renderTables()};tabs.appendChild(b)});
+ const t=curTab,cols=SCHEMA[t].cols,ch=eng.changed[t];
+ const rows=eng.db[t];
+ let h;
+ if(!rows.length)h='<div class="empty">La tabla '+esc(t)+' está vacía. El contador del id va en '+eng.seq[t]+'.</div>';
+ else{
+  h='<table><thead><tr>'+cols.map(c=>'<th>'+c.n+'</th>').join('')+'</tr></thead><tbody>';
+  for(const r of rows){const isNew=ch&&ch.nw.has(r.id);const upd=ch&&ch.upd.get(r.id);
+   h+='<tr'+(isNew?' class="new"':'')+'>'+cols.map(c=>{const v=r[c.n];const cls=[];if(c.t==='int'||c.t==='numeric')cls.push('num');if(!isNew&&upd&&upd.has(c.n))cls.push('upd');return '<td class="'+cls.join(' ')+'">'+(v===null?'<span class="nul">null</span>':esc(fmtVal(v,c.t)))+'</td>'}).join('')+'</tr>'}
+  h+='</tbody></table>';
+ }
+ $('#tview').innerHTML=h;
+ $('#delInfo').textContent=ch&&ch.del?('−'+ch.del+' fila(s) borradas en '+t):'';
+}
+function renderChecks(){
+ const R=RETOS[reto];
+ $('#retoTitle').textContent=R.title;$('#retoIntro').textContent=R.intro;
+ const ul=$('#checks');ul.innerHTML='';
+ let n=0;
+ R.tasks.forEach(([label,fn])=>{let v=false;try{v=!!fn(eng)}catch(e){}if(v)n++;const li=document.createElement('li');if(v)li.className='ok';li.innerHTML='<span class="m">✓</span><span>'+esc(label)+'</span>';ul.appendChild(li)});
+ $('#retoCount').textContent=R.tasks.length?n+'/'+R.tasks.length:'';
+ const acts=$('#retoActs');acts.innerHTML='';
+ if(R.solution){const b=document.createElement('button');b.className='btn small ghost';b.type='button';b.textContent='Cargar solución en el editor';b.onclick=()=>{ed.value=R.solution;syncHl();ed.focus()};acts.appendChild(b)}
+ if(reto==='libre'){[['\\dt','Ver tablas'],['SELECT * FROM productos;','Ver productos'],['SELECT * FROM categorias;','Ver categorías']].forEach(([q,l])=>{const b=document.createElement('button');b.className='btn small ghost';b.type='button';b.textContent=l;b.onclick=()=>{ed.value=q;syncHl();runSQL()};acts.appendChild(b)})}
+ const dn=$('#retoDone');
+ if(R.tasks.length&&n===R.tasks.length){dn.innerHTML='<p class="reto-done">🏆 Reto completado. Buen trabajo.</p>';if(!done[reto]){done[reto]=true;store.set('done',done);renderRetoBar();renderProg()}}
+ else dn.innerHTML='';
+}
+function renderRetoBar(){
+ const bar=$('#retoBar');bar.innerHTML='';
+ RIDS.forEach(id=>{const b=document.createElement('button');b.type='button';b.setAttribute('aria-pressed',id===reto);b.innerHTML=esc(id==='libre'?'Modo libre':RETOS[id].title.split(' · ')[0]+' '+RETOS[id].title.split(' · ')[1])+(done[id]?'<span class="ok" aria-label="completado"> ✓</span>':'');b.onclick=()=>loadReto(id);bar.appendChild(b)});
+}
+function loadReto(id,keepEditor){
+ reto=id;eng.reset(RETOS[id].seed);
+ curTab=id==='e2'?'categorias':(id==='e4'?'clientes':(id==='e6'?'productos_respaldo':'productos'));
+ if(!keepEditor){ed.value=id==='libre'?'SELECT * FROM productos;':'-- '+RETOS[id].title+'\n-- Escribe aquí tu solución.\n\n';syncHl()}
+ welcome();renderRetoBar();renderTables();renderState();renderChecks();
+}
+function renderProg(){
+ const n=RIDS.filter(i=>i!=='libre'&&done[i]).length;const best=store.get('quizBest',null);
+ $('#prog').textContent='Retos '+n+'/5'+(best!==null?' · Prueba '+best+'/12':'');
+}
+let backTarget=null;const backBtn=$('#backBtn');
+function goLab(){$('#lab').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});setTimeout(()=>ed.focus({preventScroll:true}),400)}
+$$('.code .try').forEach(btn=>{if(btn.id==='copyDDL')return;btn.addEventListener('click',()=>{const pre=btn.closest('.code').querySelector('pre');ed.value=pre.dataset.src;syncHl();backTarget=btn.closest('.code');backBtn.hidden=false;goLab()})});
+backBtn.addEventListener('click',()=>{if(backTarget)backTarget.scrollIntoView({block:'center'});backBtn.hidden=true;backTarget=null});
+new IntersectionObserver(es=>{es.forEach(en=>{if(!en.isIntersecting&&backTarget&&en.boundingClientRect.top>0)backBtn.hidden=true})}).observe($('#lab'));
+$('#copyDDL').addEventListener('click',async e=>{const t=$('#ddl').dataset.src;const b=e.currentTarget;try{await navigator.clipboard.writeText(t);b.textContent='Copiado'}catch(err){const r=document.createRange();r.selectNodeContents($('#ddl'));const s=getSelection();s.removeAllRanges();s.addRange(r);b.textContent='Seleccionado: Ctrl + C'}setTimeout(()=>b.textContent='Copiar script',2200)});
+
+/* tarjetas de retos en el taller */
+const cards=$('#retoCards');
+['e2','e3','e4','e5','e6'].forEach(id=>{const R=RETOS[id];const d=document.createElement('div');d.className='task';d.id='card-'+id;
+ d.innerHTML='<div class="task-h"><h3>'+esc(R.title)+(id==='e4'?' 🏆':'')+'</h3><span class="badge">'+esc(R.time)+'</span></div><p>'+esc(R.intro)+'</p><ol>'+R.steps.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ol><button class="btn primary small" type="button">Abrir '+esc(R.name)+' en el laboratorio</button>';
+ d.querySelector('button').onclick=()=>{loadReto(id);backTarget=d;backBtn.hidden=false;goLab()};
+ cards.appendChild(d)});
+
+/* ===== E1 clasificación ===== */
+const CLAS=[
+ ['Un cliente nuevo se registra en la tienda.','C','INSERT'],
+ ['El precio de la Gaseosa sube de 3500 a 3800.','U','UPDATE'],
+ ['Se agotaron las Empanadas y se retiran del catálogo para siempre.','D','DELETE'],
+ ['El gerente quiere ver todos los productos de Bebidas.','R','SELECT'],
+ ['Al cerrar el año se vacía completa la tabla de respaldo y su contador vuelve a 1.','D','TRUNCATE'],
+ ['El Café deja de venderse, pero debe seguir apareciendo en pedidos antiguos.','U','UPDATE']
+];
+const opsC=[['','Operación'],['C','Create'],['R','Read'],['U','Update'],['D','Delete']],opsS=['','INSERT','SELECT','UPDATE','DELETE','TRUNCATE'];
+const clas=$('#clas');
+CLAS.forEach((c,i)=>{const r=document.createElement('div');r.className='row';r.innerHTML='<p>'+(i+1)+'. '+esc(c[0])+'</p><select aria-label="Operación CRUD de la situación '+(i+1)+'">'+opsC.map(o=>'<option value="'+o[0]+'">'+o[1]+'</option>').join('')+'</select><select aria-label="Comando SQL de la situación '+(i+1)+'">'+opsS.map(o=>'<option value="'+o+'">'+(o||'Comando')+'</option>').join('')+'</select><span class="mk" aria-live="polite"></span>';clas.appendChild(r)});
+$('#clasChk').onclick=()=>{let n=0;$$('#clas .row').forEach((r,i)=>{const[a,b]=r.querySelectorAll('select');const good=a.value===CLAS[i][1]&&b.value===CLAS[i][2];r.className='row '+(good?'ok':'no');r.querySelector('.mk').textContent=good?'✓':'✗';if(good)n++});
+ $('#clasRes').textContent=n+' de '+CLAS.length+' correctas. '+(n===CLAS.length?'Perfecto: fíjate en la 6, eso es un borrado lógico.':'Revisa las marcadas con ✗. Pista: la 5 vacía todo de golpe y la 6 no borra nada.')};
+$('#clasRst').onclick=()=>{$$('#clas .row').forEach(r=>{r.className='row';r.querySelectorAll('select').forEach(s=>s.value='');r.querySelector('.mk').textContent=''});$('#clasRes').textContent=''};
+
+/* ===== ordenar ===== */
+const DEPS=[['categorias','productos'],['productos','detalle_pedido'],['clientes','pedidos'],['pedidos','detalle_pedido']];
+const ORD={ins:{el:$('#ordIns'),items:['detalle_pedido','productos','pedidos','categorias','clientes'],verb:'INSERT INTO '},del:{el:$('#ordDel'),items:['categorias','clientes','productos','detalle_pedido','pedidos'],verb:'DELETE FROM '}};
+function renderOrd(k){const o=ORD[k];o.el.innerHTML='';o.items.forEach((t,i)=>{const li=document.createElement('li');li.innerHTML='<span>'+o.verb+t+' …</span><span class="mv"><button type="button" aria-label="Subir '+t+'"'+(i===0?' disabled':'')+'>↑</button><button type="button" aria-label="Bajar '+t+'"'+(i===o.items.length-1?' disabled':'')+'>↓</button></span>';const[u,d]=li.querySelectorAll('button');u.onclick=()=>{swap(k,i,i-1)};d.onclick=()=>{swap(k,i,i+1)};o.el.appendChild(li)})}
+function swap(k,i,j){const a=ORD[k].items;[a[i],a[j]]=[a[j],a[i]];renderOrd(k);$('#fb-'+k).hidden=true;const btn=ORD[k].el.children[j].querySelectorAll('button')[j<i?0:1];(btn&&!btn.disabled?btn:ORD[k].el.children[j].querySelector('button:not([disabled])')).focus()}
+$$('[data-ordchk]').forEach(b=>b.onclick=()=>{const k=b.dataset.ordchk,a=ORD[k].items,fb=$('#fb-'+k);const bad=[];
+ DEPS.forEach(([p,c])=>{const ip=a.indexOf(p),ic=a.indexOf(c);if(k==='ins'&&ic<ip)bad.push('“'+c+'” va antes que “'+p+'”, pero sus filas necesitan que '+p+' ya tenga datos.');if(k==='del'&&ip<ic)bad.push('“'+p+'” se borra antes que “'+c+'”, y '+c+' todavía le apunta.')});
+ fb.hidden=false;if(bad.length){fb.className='fb no';fb.innerHTML=bad.map(esc).join('<br>')}else{fb.className='fb ok';fb.textContent=k==='ins'?'¡Correcto! Cada padre existe antes que sus hijos.':'¡Correcto! Cada hijo se borra antes que su padre.'}});
+renderOrd('ins');renderOrd('del');
+
+/* ===== quiz ===== */
+const Q=[
+ {q:'¿Qué comando SQL corresponde a la R de CRUD?',o:['REMOVE','SELECT','REPLACE','RETURNING'],a:1,x:'Read, leer, se hace con SELECT. RETURNING existe, pero es una cláusula que acompaña a INSERT, UPDATE o DELETE.'},
+ {q:'¿Qué imprime psql después de esta instrucción?',c:"INSERT INTO categorias (nombre)\nVALUES ('Postres'), ('Lácteos'), ('Frutas');",o:['(3 rows affected)','INSERT 0 3','INSERT 3','OK, 3 filas'],a:1,x:'PostgreSQL responde INSERT 0 3. El 0 es un campo histórico que siempre vale 0; el 3 son las filas insertadas. “(3 rows affected)” es el estilo de SQL Server.'},
+ {q:'La columna id es INTEGER GENERATED ALWAYS AS IDENTITY. ¿Qué pasa con esta instrucción?',c:"INSERT INTO categorias (id, nombre)\nVALUES (10, 'Postres');",o:['Inserta la fila con id 10.','Ignora el 10 y usa el siguiente número.','Da error: no se puede insertar un valor en una columna GENERATED ALWAYS.','Inserta y reinicia el contador en 10.'],a:2,x:'Con GENERATED ALWAYS, PostgreSQL rechaza cualquier valor escrito a mano en el id (salvo con OVERRIDING SYSTEM VALUE). Por eso nunca se incluye la columna id en el INSERT.'},
+ {q:'¿Cuál es la forma de PostgreSQL para conocer el id que se acaba de generar?',o:['SELECT SCOPE_IDENTITY();','SELECT @@IDENTITY;','Agregar RETURNING id al final del INSERT.','SELECT LAST_INSERT_ID();'],a:2,x:'RETURNING id devuelve el id en la misma instrucción. SCOPE_IDENTITY y @@IDENTITY son de SQL Server; LAST_INSERT_ID es de MySQL.'},
+ {q:'¿Qué ocurre al ejecutar esto en psql, sin transacción abierta?',c:'UPDATE productos SET precio = 0;',o:['Error de sintaxis porque falta el WHERE.','PostgreSQL pide confirmación antes de ejecutar.','Se modifican todas las filas y el cambio queda guardado.','Solo se modifica la primera fila.'],a:2,x:'No hay error ni aviso: se actualizan todas las filas, y en modo autocommit el cambio queda confirmado al instante. Por eso se escribe primero el SELECT con el mismo WHERE.'},
+ {q:'En PostgreSQL, después de TRUNCATE TABLE productos_respaldo; ¿el próximo id vuelve a ser 1?',o:['Sí, siempre.','No, a menos que escribas TRUNCATE TABLE productos_respaldo RESTART IDENTITY;','Solo si la tabla tenía menos de 1000 filas.','No, el id no se puede reiniciar nunca.'],a:1,x:'A diferencia de SQL Server, TRUNCATE en PostgreSQL conserva el contador por defecto (CONTINUE IDENTITY). Para reiniciarlo hay que pedirlo con RESTART IDENTITY.'},
+ {q:'Llega un cliente nuevo y hace su primer pedido. ¿En qué orden se insertan los datos?',o:['detalle_pedido, pedidos, clientes','pedidos, clientes, detalle_pedido','clientes, pedidos, detalle_pedido','Da igual el orden.'],a:2,x:'Padre antes que hijo: el pedido necesita que el cliente exista, y el detalle necesita que el pedido exista.'},
+ {q:'La categoría 1 tiene productos y la FK no tiene CASCADE. ¿Qué responde PostgreSQL?',c:'DELETE FROM categorias WHERE id = 1;',o:['DELETE 1, y los productos quedan con categoria_id en NULL.','ERROR: update or delete on table "categorias" violates foreign key constraint …','DELETE 1, y también se borran los productos.','DELETE 0'],a:1,x:'Es una violación de llave foránea (SQLSTATE 23503). Hay que borrar o reasignar primero los productos hijos. Solo con ON DELETE CASCADE se borrarían en cadena.'},
+ {q:'¿Cómo se inicia una transacción en PostgreSQL?',o:['BEGIN TRAN;','BEGIN;','OPEN TRANSACTION;','GO;'],a:1,x:'BEGIN; (o BEGIN TRANSACTION; o START TRANSACTION;). BEGIN TRAN es sintaxis de SQL Server y en PostgreSQL produce un error de sintaxis.'},
+ {q:'Dentro de una transacción, un INSERT falla por una FK. Luego escribes otro INSERT correcto. ¿Qué pasa?',o:['Se ejecuta normalmente.','Se ejecuta, pero solo se guardará con COMMIT.','ERROR: current transaction is aborted, commands ignored until end of transaction block','PostgreSQL hace COMMIT automático de lo anterior.'],a:2,x:'Tras un error, la transacción queda abortada (prompt =!#) y todo se rechaza hasta ROLLBACK. Si escribes COMMIT, PostgreSQL responde ROLLBACK.'},
+ {q:'activo es BOOLEAN. ¿Cuál de estos INSERT es correcto en PostgreSQL?',o:["… VALUES ('Café', 1, 1800, 0, 0);","… VALUES ('Café', 1, 1800, 0, FALSE);","… VALUES ('Café', 1, 1800, 0, 'NO');","… VALUES ('Café', 1, 1800, 0, NULL);"],a:1,x:'BOOLEAN se escribe con TRUE o FALSE. El 0 de SQL Server (BIT) da “column is of type boolean but expression is of type integer”, y NULL viola el NOT NULL de activo.'},
+ {q:'¿Qué responde PostgreSQL a esta consulta?',c:'SELECT * FROM productos WHERE nombre = "Café";',o:['La fila del Café.','ERROR: column "Café" does not exist','(0 rows)','Un aviso de comillas mal usadas, pero la ejecuta.'],a:1,x:'En PostgreSQL las comillas dobles encierran nombres de columnas o tablas. Los textos van con comillas simples: WHERE nombre = \'Café\'.'}
+];
+const quiz=$('#quiz');
+Q.forEach((it,i)=>{const f=document.createElement('fieldset');f.innerHTML='<legend><b>'+(i+1)+'.</b>'+esc(it.q)+'</legend>'+(it.c?'<pre>'+hl(it.c)+'</pre>':'')+it.o.map((o,j)=>'<label><input type="radio" name="q'+i+'" value="'+j+'"><span>'+(/[;…]/.test(o)&&/INSERT|VALUES|SELECT|BEGIN|ERROR|TRUNCATE|DELETE|RETURNING|INSERT 0|GO/.test(o)?'<code>'+esc(o)+'</code>':esc(o))+'</span></label>').join('')+'<p class="exp">'+esc(it.x)+'</p>';quiz.appendChild(f)});
+const upd=()=>{if(quiz.classList.contains('graded'))return;const n=Q.filter((_,i)=>quiz.querySelector('input[name=q'+i+']:checked')).length;$('#scoreTxt').textContent=n+' de 12 respondidas'};
+quiz.addEventListener('change',upd);
+$('#grade').onclick=()=>{let s=0;Q.forEach((it,i)=>{const ch=quiz.querySelector('input[name=q'+i+']:checked');quiz.querySelectorAll('input[name=q'+i+']').forEach(inp=>{const lb=inp.parentElement;lb.classList.remove('right','wrong');if(+inp.value===it.a)lb.classList.add('right');else if(inp.checked)lb.classList.add('wrong');inp.disabled=true});if(ch&&+ch.value===it.a)s++});
+ quiz.classList.add('graded');const best=Math.max(s,store.get('quizBest',0));store.set('quizBest',best);renderProg();
+ $('#scoreTxt').innerHTML='<b>'+s+'/12</b> '+esc(s>=11?'Dominas el ciclo CRUD en PostgreSQL.':s>=8?'Vas bien: lee las explicaciones de las que fallaste.':'Repasa las unidades 02 a 06 y practica en el laboratorio.')};
+$('#retry').onclick=()=>{quiz.classList.remove('graded');quiz.querySelectorAll('input').forEach(i=>{i.checked=false;i.disabled=false;i.parentElement.classList.remove('right','wrong')});upd();quiz.querySelector('fieldset').scrollIntoView({block:'start'})};
+
+/* ===== autoevaluación ===== */
+const SELF=['Explico qué significa CRUD y asocio cada operación con su comando SQL.','Escribo INSERT simple, múltiple y omitiendo columnas con DEFAULT.','Nunca escribo el id: uso RETURNING para conocerlo.','Escribo UPDATE con WHERE y siempre verifico antes con SELECT.','Escribo DELETE con WHERE y conozco las diferencias de TRUNCATE en PostgreSQL.','Inserto en orden padre → hijo y borro en orden hijo → padre.','Uso BEGIN, COMMIT y ROLLBACK, y sé qué es una transacción abortada.','Traduzco las diferencias de SQL Server a PostgreSQL (BOOLEAN, comillas, BEGIN).'];
+let selfS=store.get('self',[]);
+const selfUl=$('#self');
+SELF.forEach((t,i)=>{const li=document.createElement('li');li.innerHTML='<label><input type="checkbox" '+(selfS[i]?'checked':'')+'><span>'+esc(t)+'</span></label>';li.querySelector('input').onchange=e=>{selfS[i]=e.target.checked;store.set('self',selfS);selfMsg()};selfUl.appendChild(li)});
+function selfMsg(){const n=selfS.filter(Boolean).length;$('#selfRes').textContent=n+' de 8. '+(n>=7?'¡Listo para BD·108: SELECT con superpoderes!':n>=4?'Repite E4 y E5 hasta dominar el orden con FK y las transacciones.':'Vuelve a la unidad 01 y apóyate en el laboratorio.')}
+selfMsg();
+
+/* navegación activa */
+const links=$$('.nav a');const secs=links.map(a=>$(a.getAttribute('href')));
+const io=new IntersectionObserver(es=>{es.forEach(en=>{if(en.isIntersecting){links.forEach(l=>l.classList.toggle('on',l.getAttribute('href')==='#'+en.target.id));const on=links.find(l=>l.classList.contains('on'));if(on&&on.scrollIntoView&&window.innerWidth<900){const nav=$('.nav');nav.scrollTo({left:on.offsetLeft-nav.offsetLeft-12,behavior:'auto'})}}})},{rootMargin:'-45% 0px -50% 0px'});
+secs.forEach(s=>s&&io.observe(s));
+
+loadReto('libre');renderProg();
+})();
+</script>
+</body></html>
