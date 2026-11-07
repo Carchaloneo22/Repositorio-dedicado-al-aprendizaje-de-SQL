@@ -1,0 +1,37 @@
+# 📄 Documentación SQL: Sistema de Gestión de Compras y Proveedores
+
+Este documento contiene el script detallado de las **30 consultas SQL** diseñadas para la base de datos del sistema de compras. Incluye desde operaciones básicas CRUD hasta análisis de datos avanzados y auditorías de integridad.
+
+## 🛠️ 1. Operaciones Básicas (CRUD)
+
+Consultas fundamentales para la manipulación directa de los registros en las tablas principales.
+
+| # | Tipo | Descripción | Tabla Principal |
+|---|------|-------------|-----------------|
+| 1 | `SELECT` | Extracción total de datos (Nota: práctica desaconsejada en producción). | `tab_prov` |
+| 2 | `SELECT` | Filtrado de productos activos mediante estado booleano. | `tab_prod` |
+| 3 | `ORDER BY` | Listado ordenado alfabéticamente. | `tab_prov` |
+| 4 | `LIMIT` | Muestra paginada o restringida de resultados. | `tab_ciud` |
+| 9 | `INSERT` | Alta de nueva área administrativa. | `tab_areas` |
+| 10 | `UPDATE` | Modificación de puntuación de proveedor. | `tab_prov` |
+| 11 | `DELETE` | Eliminación de órdenes de compra específicas. | `tab_orden_compra` |
+
+## 📊 2. Consultas Analíticas y de Agregación
+
+Utilización de funciones de agregación (`COUNT`, `SUM`, `AVG`) y agrupamiento (`GROUP BY`) para obtener métricas de negocio.
+
+### Métricas Clave
+*   **Volumen Operativo:** Conteo total de órdenes de compra.
+*   **Facturación:** Suma del valor neto de detalles de compra.
+*   **Riesgo Financiero:** Promedio de cupo de crédito asignado a proveedores.
+*   **Geografía:** Distribución de ciudades por departamento.
+
+### Ejemplo de Agregación Temporal (Consulta 28)
+Análisis mensual de facturación cruzando encabezados y detalles:
+```sql
+SELECT EXTRACT(MONTH FROM fec_factura) AS mes, 
+       COUNT(*) AS num_facturas, 
+       SUM(d.val_neto) AS total_mes
+FROM tab_enc_compra e
+JOIN tab_det_compra d ON e.id_factura = d.id_factura
+GROUP BY EXTRACT(MONTH FROM fec_factura);
