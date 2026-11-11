@@ -1,0 +1,1039 @@
+CREATE DATABASE Guia_BD_Compras_Normalizada;
+CREATE TABLE tab_pmtros (
+    id_empresa  DECIMAL(10,0) NOT NULL,  -- Identificador de la empresa.
+    dia_pagos1  SMALLINT      NOT NULL,  -- Primer día de pagos (1=lunes ... 7=domingo).
+    dia_pagos2  SMALLINT      NOT NULL,  -- Segundo día de pagos.
+    dia_pagos3  SMALLINT      NOT NULL,  -- Tercer día de pagos.
+    num_orden   DECIMAL(6,0)  NOT NULL,  -- Consecutivo de la próxima orden de compra.
+
+  
+    CONSTRAINT pk_pmtros
+        PRIMARY KEY (id_empresa),
+
+    
+    CONSTRAINT ck_pmtros_id
+        CHECK (id_empresa > 0),
+
+ 
+    CONSTRAINT ck_pmtros_dias
+        CHECK (
+            dia_pagos1 BETWEEN 1 AND 7
+            AND dia_pagos2 BETWEEN 1 AND 7
+            AND dia_pagos3 BETWEEN 1 AND 7
+            AND dia_pagos1 < dia_pagos2
+            AND dia_pagos2 < dia_pagos3
+        ),
+
+       CONSTRAINT ck_pmtros_orden
+        CHECK (num_orden > 0)
+);
+CREATE TABLE tab_dptos (
+    id_dpto  VARCHAR(2)  NOT NULL,  -- Código del departamento (2 dígitos).
+    nom_dpto VARCHAR(60) NOT NULL,  -- Nombre del departamento.
+
+
+    CONSTRAINT pk_dptos
+        PRIMARY KEY (id_dpto),
+
+    CONSTRAINT uq_dptos_nombre
+        UNIQUE (nom_dpto),
+
+
+    CONSTRAINT ck_dptos_id
+        CHECK (id_dpto ~ '^[0-9]{2}$'),
+
+
+    CONSTRAINT ck_dptos_nombre
+        CHECK (BTRIM(nom_dpto) <> '')
+);
+CREATE TABLE tab_ciud (
+    id_ciud  VARCHAR(5)  NOT NULL,  -- Código de la ciudad (5 dígitos).
+    nom_ciud VARCHAR(80) NOT NULL,  -- Nombre de la ciudad.
+    id_dpto  VARCHAR(2)  NOT NULL,  -- Departamento al que pertenece.
+
+
+    CONSTRAINT pk_ciud
+        PRIMARY KEY (id_ciud),
+
+
+    CONSTRAINT fk_ciud_dpto
+        FOREIGN KEY (id_dpto)
+        REFERENCES tab_dptos (id_dpto)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+
+    CONSTRAINT uq_ciud_dpto_nombre
+        UNIQUE (id_dpto, nom_ciud),
+
+    CONSTRAINT ck_ciud_id
+        CHECK (id_ciud ~ '^[0-9]{5}$'),
+
+    CONSTRAINT ck_ciud_dpto
+        CHECK (LEFT(id_ciud, 2) = id_dpto),
+
+    CONSTRAINT ck_ciud_nombre
+        CHECK (BTRIM(nom_ciud) <> '')
+);
+CREATE TABLE tab_prov (
+    id_prov      DECIMAL(10,0) NOT NULL,  -- Identificador del proveedor.
+    nom_prov     VARCHAR(60)   NOT NULL,  -- Nombres.
+    ape1_prov    VARCHAR(60)   NOT NULL,  -- Primer apellido.
+    ape2_prov    VARCHAR(60),             -- Segundo apellido (opcional).
+
+
+    nom_comp     VARCHAR(185) GENERATED ALWAYS AS
+                 (nom_prov || ' ' || ape1_prov || COALESCE(' ' || ape2_prov, ''))
+                 STORED,
+
+    dir_prov     VARCHAR(100)  NOT NULL,  -- Dirección.
+    tel_prov     VARCHAR(10)   NOT NULL,  -- Teléfono (texto, para no perder ceros).
+    email_prov   VARCHAR(100)  NOT NULL,  -- Correo electrónico.
+    id_ciud      VARCHAR(5)    NOT NULL,  -- Ciudad donde está el proveedor.
+
+    val_cupocre  DECIMAL(12,0) NOT NULL DEFAULT 0,    -- Cupo de crédito.
+    val_puntos   DECIMAL(3,0)  NOT NULL DEFAULT 0,    -- Puntaje de evaluación (0 a 100).
+    num_fact     DECIMAL(6,0)  NOT NULL,              -- Consecutivo de facturas del proveedor.
+    ind_estado   BOOLEAN       NOT NULL DEFAULT TRUE, -- TRUE = activo, FALSE = inactivo.
+
+    CONSTRAINT pk_prov
+        PRIMARY KEY (id_prov),
+
+    CONSTRAINT fk_prov_ciud
+        FOREIGN KEY (id_ciud)
+        REFERENCES tab_ciud (id_ciud)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+
+    CONSTRAINT uq_prov_email
+        UNIQUE (email_prov),
+
+    CONSTRAINT ck_prov_id
+        CHECK (id_prov > 0),
+
+    CONSTRAINT ck_prov_tel
+        CHECK (tel_prov ~ '^(60[124-8]|3[0-9]{2})[0-9]{7}$'),
+
+    CONSTRAINT ck_prov_email
+        CHECK (email_prov ~* '^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$'),
+
+    CONSTRAINT ck_prov_cupo
+        CHECK (val_cupocre >= 0),
+
+    CONSTRAINT ck_prov_puntos
+        CHECK (val_puntos BETWEEN 0 AND 100),
+
+    CONSTRAINT ck_prov_fact
+        CHECK (num_fact > 0)
+        
+);
+CREATE TABLE tab_prod (
+    id_prod     SMALLINT    NOT NULL,                 -- Identificador del producto.
+    id_ref      VARCHAR(10) NOT NULL,                 -- Referencia (PROD + 3 dígitos).
+    nom_prod    VARCHAR(80) NOT NULL,                 -- Nombre del producto.
+    ind_estado  BOOLEAN     NOT NULL DEFAULT TRUE,    -- TRUE = activo.
+
+    CONSTRAINT pk_prod
+        PRIMARY KEY (id_prod),
+
+    CONSTRAINT uq_prod_ref
+        UNIQUE (id_ref),
+
+    CONSTRAINT ck_prod_id
+        CHECK (id_prod > 0),
+
+    CONSTRAINT ck_prod_ref
+        CHECK (id_ref ~ '^PROD[0-9]{3}$'),
+
+    CONSTRAINT ck_prod_nombre
+        CHECK (BTRIM(nom_prod) <> '')
+);
+CREATE TABLE tab_prod_prov (
+    id_prov    DECIMAL(10,0) NOT NULL,               -- Proveedor.
+    id_prod    SMALLINT      NOT NULL,               -- Producto.
+    val_prod   DECIMAL(10,0) NOT NULL,               -- Precio de lista.
+    ind_disp   BOOLEAN       NOT NULL DEFAULT TRUE,  -- TRUE = disponible.
+
+    CONSTRAINT pk_prod_prov
+        PRIMARY KEY (id_prov, id_prod),
+
+    CONSTRAINT fk_prodprov_prov
+        FOREIGN KEY (id_prov)
+        REFERENCES tab_prov (id_prov)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_prodprov_prod
+        FOREIGN KEY (id_prod)
+        REFERENCES tab_prod (id_prod)
+        ON DELETE RESTRICT,
+
+     CONSTRAINT ck_prodprov_valor
+        CHECK (val_prod > 0)
+);
+CREATE TABLE tab_areas (
+    id_area     DECIMAL(2,0) NOT NULL,  -- Identificador del área.
+    nom_area    VARCHAR  NOT NULL,  -- Nombre del área.
+    nom_encarg  VARCHAR(100) NOT NULL,  -- Persona encargada.
+
+
+    CONSTRAINT pk_areas
+        PRIMARY KEY (id_area),
+
+
+    CONSTRAINT uq_areas_nombre
+        UNIQUE (nom_area),
+
+    CONSTRAINT ck_areas_id
+        CHECK (id_area > 0)
+);
+CREATE TABLE tab_orden_compra (
+    id_orden    DECIMAL(6,0) NOT NULL,                            -- Número de la orden.
+    fec_orden   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,  -- Fecha y hora de la orden.
+    id_area     DECIMAL(2,0) NOT NULL,                            -- Área que solicita.
+
+    CONSTRAINT pk_orden
+        PRIMARY KEY (id_orden),
+
+    CONSTRAINT fk_orden_area
+        FOREIGN KEY (id_area)
+        REFERENCES tab_areas (id_area)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT ck_orden_id
+        CHECK (id_orden > 0)
+);
+CREATE TABLE tab_det_orden (
+    id_orden    DECIMAL(6,0) NOT NULL,  -- Orden a la que pertenece la línea.
+    id_prod     SMALLINT     NOT NULL,  -- Producto solicitado.
+    val_cant    SMALLINT     NOT NULL,  -- Cantidad solicitada.
+
+    CONSTRAINT pk_det_orden
+        PRIMARY KEY (id_orden, id_prod),
+
+    CONSTRAINT fk_det_orden_orden
+        FOREIGN KEY (id_orden)
+        REFERENCES tab_orden_compra (id_orden)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_det_orden_prod
+        FOREIGN KEY (id_prod)
+        REFERENCES tab_prod (id_prod)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT ck_det_orden_cant
+        CHECK (val_cant > 0)
+);
+CREATE TABLE tab_enc_compra (
+    id_factura       DECIMAL(6,0) NOT NULL,                -- Número de la factura.
+    fec_factura      DATE         NOT NULL DEFAULT CURRENT_DATE,  -- Fecha de la factura.
+    id_prov          DECIMAL(10,0) NOT NULL,               -- Proveedor que factura.
+    id_ciud_entrega  VARCHAR(5)   NOT NULL,                -- Ciudad donde se recibe la compra.
+    val_observa      TEXT,                                 -- Observaciones (opcional).
+
+
+    CONSTRAINT pk_enc_compra
+        PRIMARY KEY (id_factura),
+
+
+    CONSTRAINT fk_enc_prov
+        FOREIGN KEY (id_prov)
+        REFERENCES tab_prov (id_prov)
+        ON DELETE RESTRICT,
+
+
+    CONSTRAINT fk_enc_ciud
+        FOREIGN KEY (id_ciud_entrega)
+        REFERENCES tab_ciud (id_ciud)
+        ON DELETE RESTRICT,
+
+
+    CONSTRAINT ck_enc_id
+        CHECK (id_factura > 0),
+
+
+    CONSTRAINT ck_enc_fecha
+        CHECK (fec_factura >= DATE '2000-01-01')
+);
+CREATE TABLE tab_det_compra (
+    id_factura  DECIMAL(6,0)  NOT NULL,                -- Factura a la que pertenece la línea.
+    id_prod     SMALLINT      NOT NULL,                -- Producto facturado.
+    val_cant    SMALLINT      NOT NULL,                -- Unidades compradas.
+    val_unit    DECIMAL(10,0) NOT NULL,                -- Valor unitario.
+    val_descu   DECIMAL(12,0) NOT NULL DEFAULT 0,      -- Descuento en pesos (0 por defecto).
+    porc_iva    DECIMAL(4,2)  NOT NULL DEFAULT 19,     -- Porcentaje de IVA (19 por defecto).
+
+
+    val_bruto   DECIMAL(12,0)
+        GENERATED ALWAYS AS (val_cant * val_unit) STORED,
+
+
+    val_iva     DECIMAL(12,0)
+        GENERATED ALWAYS AS
+        (ROUND((val_cant * val_unit - val_descu) * porc_iva / 100)) STORED,
+
+
+    val_neto    DECIMAL(12,0)
+        GENERATED ALWAYS AS
+        (val_cant * val_unit - val_descu
+         + ROUND((val_cant * val_unit - val_descu) * porc_iva / 100)) STORED,
+
+
+    CONSTRAINT pk_det_compra
+        PRIMARY KEY (id_factura, id_prod),
+
+
+    CONSTRAINT fk_detcomp_enc
+        FOREIGN KEY (id_factura)
+        REFERENCES tab_enc_compra (id_factura)
+        ON DELETE CASCADE,
+
+
+    CONSTRAINT fk_detcomp_prod
+        FOREIGN KEY (id_prod)
+        REFERENCES tab_prod (id_prod)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT ck_detcomp_cant
+        CHECK (val_cant > 0),
+
+
+    CONSTRAINT ck_detcomp_unit
+        CHECK (val_unit > 0),
+
+
+    CONSTRAINT ck_detcomp_descu
+        CHECK (val_descu >= 0 AND val_descu <= val_cant * val_unit),
+
+
+    CONSTRAINT ck_detcomp_iva
+        CHECK (porc_iva IN (0, 5, 19))
+);
+CREATE TABLE tab_pagos (
+    id_factura  DECIMAL(6,0)  NOT NULL,  -- Factura que se paga.
+    id_pago     SMALLINT      NOT NULL,  -- Número del pago dentro de la factura.
+    fec_pago    DATE          NOT NULL,  -- Fecha del pago.
+    val_pago    DECIMAL(12,0) NOT NULL,  -- Valor pagado.
+
+
+    CONSTRAINT pk_pagos
+        PRIMARY KEY (id_factura, id_pago),
+
+
+    CONSTRAINT fk_pagos_enc
+        FOREIGN KEY (id_factura)
+        REFERENCES tab_enc_compra (id_factura)
+        ON DELETE RESTRICT,
+
+
+    CONSTRAINT ck_pagos_id
+        CHECK (id_pago > 0),
+
+
+    CONSTRAINT ck_pagos_valor
+        CHECK (val_pago > 0)
+);
+BEGIN;  -- Inicia la transacción de carga.
+
+-- ------------------------------------------------------------
+-- 5.1 Parámetros de la empresa (1 fila)
+-- Días de pago 1, 2 y 3 (lunes, martes, miércoles); la próxima
+-- orden será la 100031 (las órdenes 100001 a 100030 ya existen).
+-- ------------------------------------------------------------
+INSERT INTO tab_pmtros (id_empresa, dia_pagos1, dia_pagos2, dia_pagos3, num_orden)
+VALUES (1, 1, 2, 3, 100031);
+
+-- ------------------------------------------------------------
+-- 5.2 Departamentos (20 filas)
+-- ------------------------------------------------------------
+INSERT INTO tab_dptos (id_dpto, nom_dpto) VALUES
+    ('01', 'Amazonas'),
+    ('02', 'Antioquia'),
+    ('03', 'Arauca'),
+    ('04', 'Atlántico'),
+    ('05', 'Bolívar'),
+    ('06', 'Boyacá'),
+    ('07', 'Caldas'),
+    ('08', 'Caquetá'),
+    ('09', 'Cauca'),
+    ('10', 'Cesar'),
+    ('11', 'Chocó'),
+    ('12', 'Córdoba'),
+    ('13', 'Cundinamarca'),
+    ('14', 'Guaviare'),
+    ('15', 'Huila'),
+    ('16', 'La Guajira'),
+    ('17', 'Magdalena'),
+    ('18', 'Meta'),
+    ('19', 'Nariño'),
+    ('20', 'Norte de Santander');
+
+-- ------------------------------------------------------------
+-- 5.3 Ciudades (156 filas: 8 por departamento; Guaviare tiene 4)
+-- El código de cada ciudad empieza por el código de su departamento.
+-- ------------------------------------------------------------
+INSERT INTO tab_ciud (id_ciud, nom_ciud, id_dpto) VALUES
+    ('01001', 'Leticia', '01'),  -- Departamento 01 - Amazonas
+    ('01002', 'Puerto Nariño', '01'),
+    ('01003', 'Tarapacá', '01'),
+    ('01004', 'Puerto Arica', '01'),
+    ('01005', 'Puerto Santander', '01'),
+    ('01006', 'La Pedrera', '01'),
+    ('01007', 'Mirití-Paraná', '01'),
+    ('01008', 'La Chorrera', '01'),
+    ('02001', 'Medellín', '02'),  -- Departamento 02 - Antioquia
+    ('02002', 'Bello', '02'),
+    ('02003', 'Itagüí', '02'),
+    ('02004', 'Envigado', '02'),
+    ('02005', 'Rionegro', '02'),
+    ('02006', 'Marinilla', '02'),
+    ('02007', 'Copacabana', '02'),
+    ('02008', 'La Estrella', '02'),
+    ('03001', 'Arauca', '03'),  -- Departamento 03 - Arauca
+    ('03002', 'Arauquita', '03'),
+    ('03003', 'Saravena', '03'),
+    ('03004', 'Tame', '03'),
+    ('03005', 'Fortul', '03'),
+    ('03006', 'Puerto Rondón', '03'),
+    ('03007', 'Cravo Norte', '03'),
+    ('03008', 'Puerto Jordán', '03'),
+    ('04001', 'Barranquilla', '04'),  -- Departamento 04 - Atlántico
+    ('04002', 'Soledad', '04'),
+    ('04003', 'Malambo', '04'),
+    ('04004', 'Sabanalarga', '04'),
+    ('04005', 'Baranoa', '04'),
+    ('04006', 'Puerto Colombia', '04'),
+    ('04007', 'Galapa', '04'),
+    ('04008', 'Santo Tomás', '04'),
+    ('05001', 'Cartagena', '05'),  -- Departamento 05 - Bolívar
+    ('05002', 'Magangué', '05'),
+    ('05003', 'Turbaco', '05'),
+    ('05004', 'Arjona', '05'),
+    ('05005', 'El Carmen de Bolívar', '05'),
+    ('05006', 'Mompós', '05'),
+    ('05007', 'San Juan Nepomuceno', '05'),
+    ('05008', 'Santa Rosa del Sur', '05'),
+    ('06001', 'Tunja', '06'),  -- Departamento 06 - Boyacá
+    ('06002', 'Duitama', '06'),
+    ('06003', 'Sogamoso', '06'),
+    ('06004', 'Chiquinquirá', '06'),
+    ('06005', 'Paipa', '06'),
+    ('06006', 'Villa de Leyva', '06'),
+    ('06007', 'Moniquirá', '06'),
+    ('06008', 'Puerto Boyacá', '06'),
+    ('07001', 'Manizales', '07'),  -- Departamento 07 - Caldas
+    ('07002', 'La Dorada', '07'),
+    ('07003', 'Chinchiná', '07'),
+    ('07004', 'Villamaría', '07'),
+    ('07005', 'Riosucio', '07'),
+    ('07006', 'Anserma', '07'),
+    ('07007', 'Aguadas', '07'),
+    ('07008', 'Salamina', '07'),
+    ('08001', 'Florencia', '08'),  -- Departamento 08 - Caquetá
+    ('08002', 'San Vicente del Caguán', '08'),
+    ('08003', 'Puerto Rico', '08'),
+    ('08004', 'Cartagena del Chairá', '08'),
+    ('08005', 'Belén de los Andaquíes', '08'),
+    ('08006', 'El Doncello', '08'),
+    ('08007', 'La Montañita', '08'),
+    ('08008', 'Albania', '08'),
+    ('09001', 'Popayán', '09'),  -- Departamento 09 - Cauca
+    ('09002', 'Santander de Quilichao', '09'),
+    ('09003', 'Puerto Tejada', '09'),
+    ('09004', 'Patía', '09'),
+    ('09005', 'Piendamó', '09'),
+    ('09006', 'Silvia', '09'),
+    ('09007', 'Timbío', '09'),
+    ('09008', 'Miranda', '09'),
+    ('10001', 'Valledupar', '10'),  -- Departamento 10 - Cesar
+    ('10002', 'Aguachica', '10'),
+    ('10003', 'Codazzi', '10'),
+    ('10004', 'Bosconia', '10'),
+    ('10005', 'Chimichagua', '10'),
+    ('10006', 'Curumaní', '10'),
+    ('10007', 'La Jagua de Ibirico', '10'),
+    ('10008', 'Pailitas', '10'),
+    ('11001', 'Quibdó', '11'),  -- Departamento 11 - Chocó
+    ('11002', 'Istmina', '11'),
+    ('11003', 'Tadó', '11'),
+    ('11004', 'Riosucio', '11'),
+    ('11005', 'Acandí', '11'),
+    ('11006', 'Condoto', '11'),
+    ('11007', 'Bahía Solano', '11'),
+    ('11008', 'Nuquí', '11'),
+    ('12001', 'Montería', '12'),  -- Departamento 12 - Córdoba
+    ('12002', 'Cereté', '12'),
+    ('12003', 'Lorica', '12'),
+    ('12004', 'Sahagún', '12'),
+    ('12005', 'Montelíbano', '12'),
+    ('12006', 'Planeta Rica', '12'),
+    ('12007', 'Tierralta', '12'),
+    ('12008', 'Ayapel', '12'),
+    ('13001', 'Chía', '13'),  -- Departamento 13 - Cundinamarca
+    ('13002', 'Soacha', '13'),
+    ('13003', 'Fusagasugá', '13'),
+    ('13004', 'Facatativá', '13'),
+    ('13005', 'Zipaquirá', '13'),
+    ('13006', 'Girardot', '13'),
+    ('13007', 'Mosquera', '13'),
+    ('13008', 'Madrid', '13'),
+    ('14001', 'San José del Guaviare', '14'),  -- Departamento 14 - Guaviare
+    ('14002', 'Calamar', '14'),
+    ('14003', 'El Retorno', '14'),
+    ('14004', 'Miraflores', '14'),
+    ('15001', 'Neiva', '15'),  -- Departamento 15 - Huila
+    ('15002', 'Pitalito', '15'),
+    ('15003', 'Garzón', '15'),
+    ('15004', 'La Plata', '15'),
+    ('15005', 'Campoalegre', '15'),
+    ('15006', 'Gigante', '15'),
+    ('15007', 'Rivera', '15'),
+    ('15008', 'Aipe', '15'),
+    ('16001', 'Riohacha', '16'),  -- Departamento 16 - La Guajira
+    ('16002', 'Maicao', '16'),
+    ('16003', 'Uribia', '16'),
+    ('16004', 'Fonseca', '16'),
+    ('16005', 'San Juan del Cesar', '16'),
+    ('16006', 'Villanueva', '16'),
+    ('16007', 'Albania', '16'),
+    ('16008', 'Dibulla', '16'),
+    ('17001', 'Santa Marta', '17'),  -- Departamento 17 - Magdalena
+    ('17002', 'Ciénaga', '17'),
+    ('17003', 'Fundación', '17'),
+    ('17004', 'El Banco', '17'),
+    ('17005', 'Aracataca', '17'),
+    ('17006', 'Zona Bananera', '17'),
+    ('17007', 'Plato', '17'),
+    ('17008', 'Pivijay', '17'),
+    ('18001', 'Villavicencio', '18'),  -- Departamento 18 - Meta
+    ('18002', 'Acacías', '18'),
+    ('18003', 'Granada', '18'),
+    ('18004', 'Puerto López', '18'),
+    ('18005', 'Puerto Concordia', '18'),
+    ('18006', 'Restrepo', '18'),
+    ('18007', 'Cumaral', '18'),
+    ('18008', 'San Martín', '18'),
+    ('19001', 'Pasto', '19'),  -- Departamento 19 - Nariño
+    ('19002', 'Tumaco', '19'),
+    ('19003', 'Ipiales', '19'),
+    ('19004', 'Túquerres', '19'),
+    ('19005', 'La Unión', '19'),
+    ('19006', 'Samaniego', '19'),
+    ('19007', 'Sandoná', '19'),
+    ('19008', 'Barbacoas', '19'),
+    ('20001', 'Cúcuta', '20'),  -- Departamento 20 - Norte de Santander
+    ('20002', 'Ocaña', '20'),
+    ('20003', 'Pamplona', '20'),
+    ('20004', 'Villa del Rosario', '20'),
+    ('20005', 'Los Patios', '20'),
+    ('20006', 'Tibú', '20'),
+    ('20007', 'Chinácota', '20'),
+    ('20008', 'Ábrega', '20');
+
+-- ------------------------------------------------------------
+-- 5.4 Áreas de la empresa (8 filas)
+-- ------------------------------------------------------------
+INSERT INTO tab_areas (id_area, nom_area, nom_encarg) VALUES
+    (1, 'Administración', 'Laura Gómez'),
+    (2, 'Compras', 'Andrés Pardo'),
+    (3, 'Ventas', 'Marcela Duque'),
+    (4, 'Tecnología', 'Julián Ospina'),
+    (5, 'Operaciones', 'Diego Cárdenas'),
+    (6, 'Recursos Humanos', 'Natalia Peña'),
+    (7, 'Calidad', 'Héctor Salazar'),
+    (8, 'Logística', 'Camila Ruiz');
+
+-- ------------------------------------------------------------
+-- 5.5 Productos (20 filas). La referencia es PROD + 3 dígitos.
+-- ind_estado se omite: toma el valor por defecto TRUE (activo).
+-- ------------------------------------------------------------
+INSERT INTO tab_prod (id_prod, id_ref, nom_prod) VALUES
+    (1, 'PROD001', 'Laptop Gamer'),
+    (2, 'PROD002', 'Mouse Inalámbrico'),
+    (3, 'PROD003', 'Teclado Mecánico'),
+    (4, 'PROD004', 'Monitor 24"'),
+    (5, 'PROD005', 'Impresora Láser'),
+    (6, 'PROD006', 'Tablet 10"'),
+    (7, 'PROD007', 'Smartphone'),
+    (8, 'PROD008', 'Auriculares Bluetooth'),
+    (9, 'PROD009', 'Memoria RAM 16GB'),
+    (10, 'PROD010', 'Disco Duro SSD 1TB'),
+    (11, 'PROD011', 'Tarjeta Gráfica'),
+    (12, 'PROD012', 'Proyector'),
+    (13, 'PROD013', 'Escritorio Oficina'),
+    (14, 'PROD014', 'Micrófono USB'),
+    (15, 'PROD015', 'Cámara Web'),
+    (16, 'PROD016', 'Altavoces'),
+    (17, 'PROD017', 'Fuente de Poder'),
+    (18, 'PROD018', 'Silla Ergonómica'),
+    (19, 'PROD019', 'Router WiFi 6'),
+    (20, 'PROD020', 'Archivador Metálico');
+
+
+INSERT INTO tab_prov (id_prov, nom_prov, ape1_prov, ape2_prov, dir_prov, tel_prov,
+                      email_prov, id_ciud, val_cupocre, val_puntos, num_fact) VALUES
+    (1000000001, 'Carlos', 'Gómez', 'Hernández', 'Calle 100 #45-20', '6011234567', 'carlos@tecnosum.com', '13001', 5000000, 95, 1000),  -- Proveedor 1
+    (1000000002, 'Ana', 'Martínez', 'López', 'Carrera 43A #1-50', '6045551234', 'ana@insumosmed.com', '02001', 4500000, 88, 1001),  -- Proveedor 2
+    (1000000003, 'Luis', 'Rodríguez', 'Pérez', 'Avenida 5 #12-30', '6075552345', 'luis@cucutatech.com', '20001', 8000000, 92, 1002),  -- Proveedor 3
+    (1000000004, 'María', 'López', 'García', 'Calle 72 #53-10', '6055553456', 'maria@barranquillapc.com', '04001', 3000000, 85, 1003),  -- Proveedor 4
+    (1000000005, 'Jorge', 'Díaz', 'Ramírez', 'Carrera 5 #8-21', '6088554567', 'jorge@huilasuministros.com', '15001', 2500000, 80, 1004),  -- Proveedor 5
+    (1000000006, 'Sofía', 'Ramírez', 'González', 'Calle 8 #15-40', '6015555678', 'sofia@mosqueraoffice.com', '13007', 6000000, 94, 1005),  -- Proveedor 6
+    (1000000007, 'Pedro', 'Hernández', 'Silva', 'Carrera 20 #18-05', '3105556789', 'pedro@araucatech.com', '03001', 3500000, 87, 1006),  -- Proveedor 7
+    (1000000008, 'Gabriela', 'Rojas', 'Pérez', 'Calle 30 #7-12', '3115557890', 'gabriela@saravenaoffice.com', '03003', 2800000, 82, 1007),  -- Proveedor 8
+    (1000000009, 'David', 'Torres', 'Vargas', 'Carrera 25 #16-33', '6025558901', 'david@pastodigital.com', '19001', 5500000, 91, 1008),  -- Proveedor 9
+    (1000000010, 'Carmen', 'Vargas', 'Mendoza', 'Calle 37 Sur #27-15', '6045559012', 'carmen@envigadomuebles.com', '02004', 4000000, 89, 1009),  -- Proveedor 10
+    (1000000011, 'Lucía', 'Fernández', 'Romero', 'Calle 14 #9-60', '3125550123', 'lucia@tamecomputo.com', '03004', 3200000, 84, 1010),  -- Proveedor 11
+    (1000000012, 'Patricia', 'Mendoza', 'Rojas', 'Avenida Pedro de Heredia #31-20', '6055551111', 'patricia@cartagenasoluciones.com', '05001', 4200000, 86, 1011),  -- Proveedor 12
+    (1000000013, 'Andrés', 'Ortega', 'Navarro', 'Carrera 23 #21-45', '6065552222', 'andres@manizalesequipos.com', '07001', 5200000, 92, 1012),  -- Proveedor 13
+    (1000000014, 'Roberto', 'Navarro', 'Suárez', 'Carrera 33 #38-12', '6086553333', 'roberto@llanotech.com', '18001', 5800000, 96, 1013),  -- Proveedor 14
+    (1000000015, 'Miguel', 'Suárez', 'Romero', 'Calle 5 #4-18', '6028554444', 'miguel@popayanimpresion.com', '09001', 4800000, 90, 1014),  -- Proveedor 15
+    (1000000016, 'Elena', 'Morales', 'Fernández', 'Carrera 10 #19-25', '6088555555', 'elena@tunjacomputo.com', '06001', 3600000, 83, 1015),  -- Proveedor 16
+    (1000000017, 'Isabel', 'Pérez', 'Morales', 'Calle 16 #12-08', '6055556666', 'isabel@valleduparcomponentes.com', '10001', 4100000, 88, 1016),  -- Proveedor 17
+    (1000000018, 'Felipe', 'Castaño', 'Gil', 'Carrera 1 #20-14', '3205557777', 'felipe@samariotech.com', '17001', 2700000, 79, 1017),  -- Proveedor 18
+    (1000000019, 'Valentina', 'Cruz', 'Ospina', 'Calle 12 #6-30', '3155558888', 'valentina@riohachaoffice.com', '16001', 2000000, 75, 1018),  -- Proveedor 19
+    (1000000020, 'Camilo', 'Restrepo', 'Duarte', 'Carrera 6 #24-17', '3165559999', 'camilo@monteriasuministros.com', '12001', 3300000, 81, 1019);  -- Proveedor 20
+
+-- ------------------------------------------------------------
+-- 5.7 Catálogo producto-proveedor (100 filas = 20 proveedores x 5)
+-- Precio de lista de cada producto según el proveedor.
+-- ind_disp se omite: toma TRUE (disponible).
+-- ------------------------------------------------------------
+INSERT INTO tab_prod_prov (id_prov, id_prod, val_prod) VALUES
+    (1000000001, 1, 2500000),  -- Proveedor 1: productos [1, 2, 3, 4, 5]
+    (1000000001, 2, 85000),
+    (1000000001, 3, 120000),
+    (1000000001, 4, 800000),
+    (1000000001, 5, 420000),
+    (1000000002, 6, 1128000),  -- Proveedor 2: productos [6, 7, 8, 9, 10]
+    (1000000002, 7, 1692000),
+    (1000000002, 8, 150000),
+    (1000000002, 9, 263000),
+    (1000000002, 10, 329000),
+    (1000000003, 9, 280000),  -- Proveedor 3: productos [9, 17, 12, 13, 18]
+    (1000000003, 17, 170000),
+    (1000000003, 12, 1485000),
+    (1000000003, 13, 594000),
+    (1000000003, 18, 446000),
+    (1000000004, 14, 120000),  -- Proveedor 4: productos [14, 15, 16, 19, 20]
+    (1000000004, 15, 91000),
+    (1000000004, 16, 173000),
+    (1000000004, 19, 230000),
+    (1000000004, 20, 413000),
+    (1000000005, 1, 2325000),  -- Proveedor 5: productos [1, 6, 11, 4, 5]
+    (1000000005, 6, 1116000),
+    (1000000005, 11, 2976000),
+    (1000000005, 4, 744000),
+    (1000000005, 5, 391000),
+    (1000000006, 7, 1764000),  -- Proveedor 6: productos [7, 8, 10, 11, 12]
+    (1000000006, 8, 157000),
+    (1000000006, 10, 343000),
+    (1000000006, 11, 3136000),
+    (1000000006, 12, 1470000),
+    (1000000007, 1, 2500000),  -- Proveedor 7: productos [1, 7, 6, 11, 12]
+    (1000000007, 7, 1650000),
+    (1000000007, 6, 1140000),
+    (1000000007, 11, 3040000),
+    (1000000007, 12, 1425000),
+    (1000000008, 2, 85000),  -- Proveedor 8: productos [2, 3, 14, 15, 16]
+    (1000000008, 3, 120000),
+    (1000000008, 14, 130000),
+    (1000000008, 15, 95000),
+    (1000000008, 16, 180000),
+    (1000000009, 4, 776000),  -- Proveedor 9: productos [4, 5, 13, 18, 19]
+    (1000000009, 5, 407000),
+    (1000000009, 13, 582000),
+    (1000000009, 18, 436000),
+    (1000000009, 19, 233000),
+    (1000000010, 4, 800000),  -- Proveedor 10: productos [4, 13, 18, 19, 20]
+    (1000000010, 13, 564000),
+    (1000000010, 18, 423000),
+    (1000000010, 19, 226000),
+    (1000000010, 20, 404000),
+    (1000000011, 8, 158000),  -- Proveedor 11: productos [8, 9, 10, 17, 2]
+    (1000000011, 9, 277000),
+    (1000000011, 10, 346000),
+    (1000000011, 17, 183000),
+    (1000000011, 2, 84000),
+    (1000000012, 6, 1152000),  -- Proveedor 12: productos [6, 12, 11, 13, 18]
+    (1000000012, 12, 1440000),
+    (1000000012, 11, 3072000),
+    (1000000012, 13, 576000),
+    (1000000012, 18, 432000),
+    (1000000013, 1, 2325000),  -- Proveedor 13: productos [1, 5, 9, 15, 16]
+    (1000000013, 5, 391000),
+    (1000000013, 9, 260000),
+    (1000000013, 15, 88000),
+    (1000000013, 16, 167000),
+    (1000000014, 13, 588000),  -- Proveedor 14: productos [13, 18, 14, 15, 20]
+    (1000000014, 18, 441000),
+    (1000000014, 14, 127000),
+    (1000000014, 15, 93000),
+    (1000000014, 20, 421000),
+    (1000000015, 5, 399000),  -- Proveedor 15: productos [5, 19, 20, 17, 10]
+    (1000000015, 19, 228000),
+    (1000000015, 20, 408000),
+    (1000000015, 17, 176000),
+    (1000000015, 10, 332000),
+    (1000000016, 3, 120000),  -- Proveedor 16: productos [3, 8, 9, 16, 6]
+    (1000000016, 8, 160000),
+    (1000000016, 9, 280000),
+    (1000000016, 16, 180000),
+    (1000000016, 6, 1200000),
+    (1000000017, 7, 1746000),  -- Proveedor 17: productos [7, 4, 2, 14, 12]
+    (1000000017, 4, 776000),
+    (1000000017, 2, 82000),
+    (1000000017, 14, 126000),
+    (1000000017, 12, 1455000),
+    (1000000018, 11, 3008000),  -- Proveedor 18: productos [11, 1, 7, 8, 9]
+    (1000000018, 1, 2350000),
+    (1000000018, 7, 1692000),
+    (1000000018, 8, 150000),
+    (1000000018, 9, 263000),
+    (1000000019, 10, 346000),  -- Proveedor 19: productos [10, 16, 17, 19, 3]
+    (1000000019, 16, 178000),
+    (1000000019, 17, 183000),
+    (1000000019, 19, 238000),
+    (1000000019, 3, 119000),
+    (1000000020, 18, 432000),  -- Proveedor 20: productos [18, 20, 13, 5, 2]
+    (1000000020, 20, 413000),
+    (1000000020, 13, 576000),
+    (1000000020, 5, 403000),
+    (1000000020, 2, 82000);
+
+-- ------------------------------------------------------------
+-- 5.8 Órdenes de compra (30 filas) - encabezado con fecha Y HORA
+-- Se reparten entre Compras (2), Ventas (3), Tecnología (4) y
+-- Operaciones (5). Quedan sin órdenes Administración, Recursos
+-- Humanos, Calidad y Logística (útil para los ejercicios).
+-- ------------------------------------------------------------
+INSERT INTO tab_orden_compra (id_orden, fec_orden, id_area) VALUES
+    (100001, '2024-01-15 08:30', 2),
+    (100002, '2024-01-18 09:15', 3),
+    (100003, '2024-01-21 10:00', 4),
+    (100004, '2024-01-24 14:45', 5),
+    (100005, '2024-01-27 11:20', 2),
+    (100006, '2024-01-30 15:10', 3),
+    (100007, '2024-02-02 08:30', 4),
+    (100008, '2024-02-05 09:15', 5),
+    (100009, '2024-02-08 10:00', 2),
+    (100010, '2024-02-11 14:45', 3),
+    (100011, '2024-02-14 11:20', 4),
+    (100012, '2024-02-17 15:10', 5),
+    (100013, '2024-02-20 08:30', 2),
+    (100014, '2024-02-23 09:15', 3),
+    (100015, '2024-02-26 10:00', 4),
+    (100016, '2024-02-29 14:45', 5),
+    (100017, '2024-03-03 11:20', 2),
+    (100018, '2024-03-06 15:10', 3),
+    (100019, '2024-03-09 08:30', 4),
+    (100020, '2024-03-12 09:15', 5),
+    (100021, '2024-03-15 10:00', 2),
+    (100022, '2024-03-18 14:45', 3),
+    (100023, '2024-03-21 11:20', 4),
+    (100024, '2024-03-24 15:10', 5),
+    (100025, '2024-03-27 08:30', 2),
+    (100026, '2024-03-30 09:15', 3),
+    (100027, '2024-04-02 10:00', 4),
+    (100028, '2024-04-05 14:45', 5),
+    (100029, '2024-04-08 11:20', 2),
+    (100030, '2024-04-11 15:10', 3);
+
+-- ------------------------------------------------------------
+-- 5.9 Detalle de las órdenes (30 filas: producto y cantidad)
+-- ------------------------------------------------------------
+INSERT INTO tab_det_orden (id_orden, id_prod, val_cant) VALUES
+    (100001, 4, 17),
+    (100002, 7, 17),
+    (100003, 10, 15),
+    (100004, 13, 14),
+    (100005, 16, 20),
+    (100006, 19, 16),
+    (100007, 2, 14),
+    (100008, 5, 21),
+    (100009, 8, 15),
+    (100010, 11, 19),
+    (100011, 14, 10),
+    (100012, 17, 10),
+    (100013, 20, 11),
+    (100014, 3, 22),
+    (100015, 6, 12),
+    (100016, 9, 16),
+    (100017, 12, 11),
+    (100018, 15, 19),
+    (100019, 18, 7),
+    (100020, 1, 24),
+    (100021, 4, 13),
+    (100022, 7, 23),
+    (100023, 10, 11),
+    (100024, 13, 11),
+    (100025, 16, 16),
+    (100026, 19, 15),
+    (100027, 2, 12),
+    (100028, 5, 18),
+    (100029, 8, 14),
+    (100030, 11, 17);
+
+-- ------------------------------------------------------------
+-- 5.10 Facturas de compra - encabezado (60 filas)
+-- Cada factura tiene su ciudad de entrega. Las facturas 200001 a
+-- 200030 corresponden a los proveedores 1 a 10 (tres cada uno) y
+-- 200031 a 200060 a los proveedores 11 a 20.
+-- ------------------------------------------------------------
+INSERT INTO tab_enc_compra (id_factura, fec_factura, id_prov, id_ciud_entrega) VALUES
+    (200001, '2024-01-15', 1000000001, '13001'),
+    (200002, '2024-01-16', 1000000001, '04001'),
+    (200003, '2024-01-18', 1000000001, '05001'),
+    (200004, '2024-01-20', 1000000002, '18001'),
+    (200005, '2024-01-22', 1000000002, '20001'),
+    (200006, '2024-01-25', 1000000002, '02001'),
+    (200007, '2024-01-30', 1000000003, '13001'),
+    (200008, '2024-02-25', 1000000003, '04001'),
+    (200009, '2024-02-01', 1000000003, '05001'),
+    (200010, '2024-02-05', 1000000004, '18001'),
+    (200011, '2024-03-01', 1000000004, '20001'),
+    (200012, '2024-03-05', 1000000004, '02001'),
+    (200013, '2024-02-10', 1000000005, '13001'),
+    (200014, '2024-03-10', 1000000005, '04001'),
+    (200015, '2024-03-12', 1000000005, '05001'),
+    (200016, '2024-02-15', 1000000006, '18001'),
+    (200017, '2024-03-15', 1000000006, '20001'),
+    (200018, '2024-03-18', 1000000006, '02001'),
+    (200019, '2024-02-20', 1000000007, '13001'),
+    (200020, '2024-03-20', 1000000007, '04001'),
+    (200021, '2024-04-10', 1000000007, '05001'),
+    (200022, '2024-02-25', 1000000008, '18001'),
+    (200023, '2024-03-25', 1000000008, '20001'),
+    (200024, '2024-04-15', 1000000008, '02001'),
+    (200025, '2024-03-01', 1000000009, '13001'),
+    (200026, '2024-03-28', 1000000009, '04001'),
+    (200027, '2024-04-20', 1000000009, '05001'),
+    (200028, '2024-03-30', 1000000010, '18001'),
+    (200029, '2024-04-05', 1000000010, '20001'),
+    (200030, '2024-04-25', 1000000010, '02001'),
+    (200031, '2024-03-10', 1000000011, '13001'),
+    (200032, '2024-04-05', 1000000011, '04001'),
+    (200033, '2024-04-12', 1000000011, '05001'),
+    (200034, '2024-03-10', 1000000012, '18001'),
+    (200035, '2024-04-05', 1000000012, '20001'),
+    (200036, '2024-04-12', 1000000012, '02001'),
+    (200037, '2024-03-10', 1000000013, '13001'),
+    (200038, '2024-04-05', 1000000013, '04001'),
+    (200039, '2024-04-12', 1000000013, '05001'),
+    (200040, '2024-03-10', 1000000014, '18001'),
+    (200041, '2024-04-05', 1000000014, '20001'),
+    (200042, '2024-04-12', 1000000014, '02001'),
+    (200043, '2024-03-10', 1000000015, '13001'),
+    (200044, '2024-04-05', 1000000015, '04001'),
+    (200045, '2024-04-12', 1000000015, '05001'),
+    (200046, '2024-03-10', 1000000016, '18001'),
+    (200047, '2024-04-05', 1000000016, '20001'),
+    (200048, '2024-04-12', 1000000016, '02001'),
+    (200049, '2024-03-10', 1000000017, '13001'),
+    (200050, '2024-04-05', 1000000017, '04001'),
+    (200051, '2024-04-12', 1000000017, '05001'),
+    (200052, '2024-03-10', 1000000018, '18001'),
+    (200053, '2024-04-05', 1000000018, '20001'),
+    (200054, '2024-04-12', 1000000018, '02001'),
+    (200055, '2024-03-10', 1000000019, '13001'),
+    (200056, '2024-04-05', 1000000019, '04001'),
+    (200057, '2024-04-12', 1000000019, '05001'),
+    (200058, '2024-03-10', 1000000020, '18001'),
+    (200059, '2024-04-05', 1000000020, '20001'),
+    (200060, '2024-04-12', 1000000020, '02001');
+
+-- ------------------------------------------------------------
+-- 5.11 Facturas de compra - detalle (37 filas)
+-- Solo se informan los datos base: cantidad, valor unitario y
+-- descuento (el IVA toma 19 % por defecto). El trigger
+-- trg_valida_det_compra comprueba que el proveedor de cada factura
+-- venda el producto. Las facturas 200021, 200024, 200027, 200030 y
+-- 200031 a 200060 se dejan SIN detalle a propósito (ejercicios).
+-- ------------------------------------------------------------
+INSERT INTO tab_det_compra (id_factura, id_prod, val_cant, val_unit, val_descu) VALUES
+    (200001, 1, 2, 2500000, 250000),  -- Neto de la línea: 5.652.500
+    (200001, 2, 10, 85000, 42500),  -- Neto de la línea: 960.925
+    (200002, 1, 3, 2500000, 375000),  -- Neto de la línea: 8.478.750
+    (200002, 3, 5, 120000, 30000),  -- Neto de la línea: 678.300
+    (200003, 4, 3, 800000, 120000),  -- Neto de la línea: 2.713.200
+    (200003, 5, 6, 420000, 126000),  -- Neto de la línea: 2.848.860
+    (200004, 10, 5, 329000, 0),  -- Neto de la línea: 1.957.550
+    (200005, 6, 1, 1128000, 0),  -- Neto de la línea: 1.342.320
+    (200006, 7, 3, 1692000, 254000),  -- Neto de la línea: 5.738.180
+    (200007, 9, 15, 280000, 0),  -- Neto de la línea: 4.998.000
+    (200007, 17, 5, 170000, 15000),  -- Neto de la línea: 993.650
+    (200008, 13, 1, 594000, 0),  -- Neto de la línea: 706.860
+    (200008, 18, 3, 446000, 0),  -- Neto de la línea: 1.592.220
+    (200009, 18, 3, 446000, 67000),  -- Neto de la línea: 1.512.490
+    (200010, 14, 5, 120000, 0),  -- Neto de la línea: 714.000
+    (200010, 15, 3, 91000, 0),  -- Neto de la línea: 324.870
+    (200011, 15, 1, 91000, 0),  -- Neto de la línea: 108.290
+    (200012, 16, 3, 173000, 26000),  -- Neto de la línea: 586.670
+    (200013, 4, 5, 744000, 0),  -- Neto de la línea: 4.426.800
+    (200013, 5, 6, 391000, 0),  -- Neto de la línea: 2.791.740
+    (200014, 5, 1, 391000, 0),  -- Neto de la línea: 465.290
+    (200015, 1, 3, 2325000, 349000),  -- Neto de la línea: 7.884.940
+    (200016, 8, 5, 157000, 0),  -- Neto de la línea: 934.150
+    (200016, 10, 3, 343000, 0),  -- Neto de la línea: 1.224.510
+    (200017, 10, 1, 343000, 0),  -- Neto de la línea: 408.170
+    (200018, 11, 3, 3136000, 470000),  -- Neto de la línea: 10.636.220
+    (200019, 7, 2, 1650000, 70000),  -- Neto de la línea: 3.843.700
+    (200020, 1, 1, 2500000, 0),  -- Neto de la línea: 2.975.000
+    (200022, 14, 5, 130000, 0),  -- Neto de la línea: 773.500
+    (200022, 15, 3, 95000, 0),  -- Neto de la línea: 339.150
+    (200023, 15, 1, 95000, 0),  -- Neto de la línea: 113.050
+    (200025, 4, 5, 776000, 0),  -- Neto de la línea: 4.617.200
+    (200025, 5, 6, 407000, 0),  -- Neto de la línea: 2.905.980
+    (200026, 5, 1, 407000, 0),  -- Neto de la línea: 484.330
+    (200028, 19, 5, 226000, 0),  -- Neto de la línea: 1.344.700
+    (200028, 20, 3, 404000, 0),  -- Neto de la línea: 1.442.280
+    (200029, 20, 1, 404000, 0);  -- Neto de la línea: 480.760
+
+-- ------------------------------------------------------------
+-- 5.12 Pagos (23 filas). Sin columna de saldo: el saldo se consulta
+-- en vw_estado_factura. El trigger trg_valida_pago valida cada pago.
+--   * Facturas 200001 a 200006 quedan PAGADAS por completo.
+--   * Facturas 200007 a 200010 quedan con PAGO PARCIAL.
+-- ------------------------------------------------------------
+INSERT INTO tab_pagos (id_factura, id_pago, fec_pago, val_pago) VALUES
+    (200001, 1, '2024-02-05', 2000000),
+    (200001, 2, '2024-02-15', 2000000),
+    (200001, 3, '2024-02-25', 2613425),
+    (200002, 1, '2024-03-05', 4000000),
+    (200002, 2, '2024-03-15', 4000000),
+    (200002, 3, '2024-03-25', 1157050),
+    (200003, 1, '2024-02-04', 1854000),
+    (200003, 2, '2024-02-16', 1854000),
+    (200003, 3, '2024-02-28', 1854060),
+    (200004, 1, '2024-02-06', 652000),
+    (200004, 2, '2024-02-18', 652000),
+    (200004, 3, '2024-03-01', 653550),
+    (200005, 1, '2024-02-08', 671000),
+    (200005, 2, '2024-02-20', 671320),
+    (200006, 1, '2024-02-11', 2869000),
+    (200006, 2, '2024-02-23', 2869180),
+    (200007, 1, '2024-02-15', 3000000),
+    (200008, 1, '2024-03-11', 514000),
+    (200008, 2, '2024-03-26', 514980),
+    (200009, 1, '2024-02-16', 504000),
+    (200009, 2, '2024-03-02', 504327),
+    (200010, 1, '2024-02-20', 161000),
+    (200010, 2, '2024-03-06', 162700);
+
+
+SELECT * FROM tab_prov;
+
+-- -----------------------------------------------------------------------------
+-- 2. Consulta SELECT con filtro WHERE
+-- -----------------------------------------------------------------------------
+SELECT * FROM tab_prod WHERE ind_estado = true;
+
+-- -----------------------------------------------------------------------------
+-- 3. Consulta SELECT con ORDER BY
+-- -----------------------------------------------------------------------------
+SELECT * FROM tab_prov ORDER BY nom_prov ASC;
+
+-- -----------------------------------------------------------------------------
+-- 4. Consulta SELECT con LIMIT
+-- -----------------------------------------------------------------------------
+SELECT id_ciud, nom_ciud FROM tab_ciud LIMIT 10;
+
+-- -----------------------------------------------------------------------------
+-- 5. Consulta SELECT con COUNT
+-- -----------------------------------------------------------------------------
+SELECT COUNT(*) AS total_ordenes FROM tab_orden_compra;
+
+-- -----------------------------------------------------------------------------
+-- 6. Consulta SELECT con SUM
+-- -----------------------------------------------------------------------------
+SELECT SUM(val_neto) AS total_facturado_neto FROM tab_det_compra;
+
+-- -----------------------------------------------------------------------------
+-- 7. Consulta SELECT con AVG
+-- -----------------------------------------------------------------------------
+SELECT AVG(val_cupocre) AS promedio_cupo_credito FROM tab_prov;
+
+-- -----------------------------------------------------------------------------
+-- 8. Consulta SELECT con GROUP BY
+-- -----------------------------------------------------------------------------
+SELECT id_dpto, COUNT(*) AS num_ciudades 
+FROM tab_ciud 
+GROUP BY id_dpto;
+
+-- -----------------------------------------------------------------------------
+-- 9. Consulta INSERT
+-- -----------------------------------------------------------------------------
+INSERT INTO tab_areas (id_area, nom_area, nom_ecarg) 
+VALUES (9, 'Auditoría', 'Elena Beltrán');
+
+-- -----------------------------------------------------------------------------
+-- 10. Consulta UPDATE
+-- -----------------------------------------------------------------------------
+UPDATE tab_prov 
+SET val_puntos = 98 
+WHERE id_prov = 1000000001;
+
+-- -----------------------------------------------------------------------------
+-- 11. Consulta DELETE
+-- -----------------------------------------------------------------------------
+DELETE FROM tab_orden_compra WHERE id_orden = 100030;
+
+-- -----------------------------------------------------------------------------
+-- 12. Consulta JOIN
+-- -----------------------------------------------------------------------------
+SELECT c.nom_ciud, d.nom_dpto 
+FROM tab_ciud c 
+JOIN tab_dptos d ON c.id_dpto = d.id_dpto;
+
+-- -----------------------------------------------------------------------------
+-- 13. Consulta con Subconsulta
+-- -----------------------------------------------------------------------------
+SELECT * FROM tab_prod 
+WHERE id_prod IN (SELECT id_prod FROM tab_prod_prov WHERE val_prod > 2000000);
+
+-- -----------------------------------------------------------------------------
+-- 14. Consulta con CASE
+-- -----------------------------------------------------------------------------
+SELECT nom_comp, val_cupocre,
+       CASE 
+           WHEN val_cupocre >= 5000000 THEN 'Cupo Alto'
+           WHEN val_cupocre BETWEEN 3000000 AND 4999999 THEN 'Cupo Medio'
+           ELSE 'Cupo Bajo'
+       END AS categoria_credito
+FROM tab_prov;
+
+-- -----------------------------------------------------------------------------
+-- 15. Consulta con UNION
+-- -----------------------------------------------------------------------------
+SELECT id_prod FROM tab_orden_compra
+UNION
+SELECT id_prod FROM tab_det_compra;
+
+-- -----------------------------------------------------------------------------
+-- 16. Consulta con UNION ALL
+-- -----------------------------------------------------------------------------
+SELECT id_ciud FROM tab_prov
+UNION ALL
+SELECT id_ciud FROM tab_enc_compra;
+
+-- -----------------------------------------------------------------------------
+-- 17. Consulta con HAVING
+-- -----------------------------------------------------------------------------
+SELECT id_factura, COUNT(*) AS num_items 
+FROM tab_det_compra 
+GROUP BY id_factura 
+HAVING COUNT(*) > 1;
+
+-- -----------------------------------------------------------------------------
+-- 18. Consulta con EXISTS
+-- -----------------------------------------------------------------------------
+SELECT * FROM tab_prov p
+WHERE EXISTS (SELECT 1 FROM tab_enc_compra e WHERE p.id_prov = e.id_prov);
+
+-- -----------------------------------------------------------------------------
+-- 19. Consulta con LIKE
+-- -----------------------------------------------------------------------------
+SELECT * FROM tab_prov WHERE (datos_prov).correo LIKE '%tecnosum%';
+
+-- -----------------------------------------------------------------------------
+-- 20. Consulta con BETWEEN
+-- -----------------------------------------------------------------------------
+SELECT * FROM tab_enc_compra 
+WHERE fec_factura BETWEEN '2024-02-01' AND '2024-02-29';
