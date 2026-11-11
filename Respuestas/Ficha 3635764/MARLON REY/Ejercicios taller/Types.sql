@@ -1,0 +1,4 @@
+ALTER TYPE datos 
+	ADD ATTRIBUTE direccion	VARCHAR (50),
+	ADD ATTRIBUTE telefono	DECIMAL (10),
+	ADD ATTRIBUTE email 		VARCHAR	(60);
