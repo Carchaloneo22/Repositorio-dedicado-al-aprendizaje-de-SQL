@@ -1,1 +1,599 @@
 
+--+++++++++++++++++++++++++++++++++++++++
+--+ CREACIÓN TABLAS DE LA BASE DE DATOS +
+--+++++++++++++++++++++++++++++++++++++++
+--+++++++++++++++++++++++++++++++
+-- SECCIÓN DE BORRADO DE TABLAS +
+--+++++++++++++++++++++++++++++++
+DROP TABLE IF EXISTS tab_pmtros CASCADE;
+DROP TABLE IF EXISTS tab_dptos CASCADE;
+DROP TABLE IF EXISTS tab_ciud CASCADE;
+DROP TABLE IF EXISTS tab_prov CASCADE;
+DROP TABLE IF EXISTS tab_prod CASCADE;
+DROP TABLE IF EXISTS tab_prod_prov CASCADE;
+DROP TABLE IF EXISTS tab_areas CASCADE; 
+DROP TABLE IF EXISTS tab_orden_compra CASCADE;
+DROP TABLE IF EXISTS tab_det_orden CASCADE;
+DROP TABLE IF EXISTS tab_enc_compra CASCADE;
+DROP TABLE IF EXISTS tab_det_compra CASCADE;
+DROP TABLE IF EXISTS tab_pagos CASCADE;
+
+
+
+-- TABLA DE PARÁMETROS GENERALES DE LA EMPRERSA REF. tab_pmtros
+CREATE TABLE tab_pmtros
+(
+	id_empresa  	DECIMAL(10,0)	NOT NULL,
+	dia_pagos1  	SMALLINT        NOT NULL,  -- día de la semana: 1=lunes ... 7=domingo 
+	dia_pagos2  	SMALLINT        NOT NULL,   
+	dia_pagos3  	SMALLINT        NOT NULL,
+	num_orden		DECIMAL(6,0)	NOT NULL,  -- consecutivo de órdenes de compra
+	CONSTRAINT pk_pmtros       PRIMARY KEY (id_empresa),
+    CONSTRAINT ck_pmtros_id    CHECK (id_empresa > 0),
+    CONSTRAINT ck_pmtros_dias  CHECK (dia_pagos1 BETWEEN 1 AND 7
+                                  AND dia_pagos2 BETWEEN 1 AND 7
+                                  AND dia_pagos3 BETWEEN 1 AND 7
+                                  AND dia_pagos1 < dia_pagos2
+                                  AND dia_pagos2 < dia_pagos3),
+    CONSTRAINT ck_pmtros_orden CHECK (num_orden > 0)
+);
+
+-- 2. Departamentos
+CREATE TABLE tab_dptos
+(
+    id_dpto   VARCHAR(2)  NOT NULL,
+    nom_dpto  VARCHAR(60) NOT NULL,
+    CONSTRAINT pk_dptos        PRIMARY KEY (id_dpto),
+    CONSTRAINT uq_dptos_nombre UNIQUE (nom_dpto),
+    CONSTRAINT ck_dptos_id     CHECK (id_dpto ~ '^[0-9]{2}$'),
+    CONSTRAINT ck_dptos_nombre CHECK (BTRIM(nom_dpto) <> '')
+);
+
+-- 3. Ciudades (el código de la ciudad empieza por el código del dpto.)
+CREATE TABLE tab_ciud
+(
+    id_ciud   VARCHAR(5)  NOT NULL,
+    nom_ciud  VARCHAR(80) NOT NULL,
+    id_dpto   VARCHAR(2)  NOT NULL,
+    CONSTRAINT pk_ciud         PRIMARY KEY (id_ciud),
+    CONSTRAINT fk_ciud_dpto    FOREIGN KEY (id_dpto)
+               REFERENCES tab_dptos (id_dpto)
+               ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT uq_ciud_nombre  UNIQUE (id_dpto, nom_ciud),
+    CONSTRAINT ck_ciud_id      CHECK (id_ciud ~ '^[0-9]{5}$'),
+    CONSTRAINT ck_ciud_prefijo CHECK (LEFT(id_ciud, 2) = id_dpto),
+    CONSTRAINT ck_ciud_nombre  CHECK (BTRIM(nom_ciud) <> '')
+);
+
+-- 4. Proveedores (datos de contacto atómicos: cumple 1FN)
+CREATE TABLE tab_prov
+(
+    id_prov      DECIMAL(10,0)	NOT NULL,
+    nom_prov     VARCHAR(60)    NOT NULL,
+    ape1_prov    VARCHAR(60)    NOT NULL,
+    ape2_prov    VARCHAR(60),
+    nom_comp     VARCHAR(185)  GENERATED ALWAYS AS
+                 (nom_prov || ' ' || ape1_prov || COALESCE(' ' || ape2_prov, ''))
+                 STORED,
+    dir_prov     VARCHAR(100)  NOT NULL,
+    tel_prov     VARCHAR(10)   NOT NULL,
+    email_prov   VARCHAR(100)  NOT NULL,
+    id_ciud      VARCHAR(5)    NOT NULL,
+    val_cupocre  DECIMAL(12,0) NOT NULL DEFAULT 0,
+    val_puntos   SMALLINT	   NOT NULL DEFAULT 0,
+    num_fact     DECIMAL(6,0)  NOT NULL,
+    ind_estado   BOOLEAN       NOT NULL DEFAULT TRUE,
+    CONSTRAINT pk_prov         PRIMARY KEY (id_prov),
+    CONSTRAINT fk_prov_ciud    FOREIGN KEY (id_ciud)
+               REFERENCES tab_ciud (id_ciud)
+               ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT uq_prov_email   UNIQUE (email_prov),
+    CONSTRAINT ck_prov_id      CHECK (id_prov > 0),
+    CONSTRAINT ck_prov_tel     CHECK (tel_prov ~ '^(60[124-8]|3[0-9]{2})[0-9]{7}$'),
+    CONSTRAINT ck_prov_email   CHECK (email_prov ~* '^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$'),
+    CONSTRAINT ck_prov_cupo    CHECK (val_cupocre >= 0),
+    CONSTRAINT ck_prov_puntos  CHECK (val_puntos BETWEEN 0 AND 100),
+    CONSTRAINT ck_prov_fact    CHECK (num_fact > 0)
+);
+
+-- 5. Productos
+CREATE TABLE tab_prod
+(
+    id_prod     SMALLINT    NOT NULL,
+    id_ref      VARCHAR(10) NOT NULL,
+    nom_prod    VARCHAR(80) NOT NULL,
+    ind_estado  BOOLEAN     NOT NULL DEFAULT TRUE,
+    CONSTRAINT pk_prod        PRIMARY KEY (id_prod),
+    CONSTRAINT uq_prod_ref    UNIQUE (id_ref),
+    CONSTRAINT ck_prod_id     CHECK (id_prod > 0),
+    CONSTRAINT ck_prod_ref    CHECK (id_ref ~ '^PROD[0-9]{3,5}$'),
+    CONSTRAINT ck_prod_nombre CHECK (BTRIM(nom_prod) <> '')
+);
+
+CREATE TABLE tab_prod_prov
+(
+    id_prov   DECIMAL(10,0) NOT NULL,
+    id_prod   SMALLINT      NOT NULL,
+    val_prod  DECIMAL(10,0) NOT NULL,
+    ind_disp  BOOLEAN       NOT NULL DEFAULT TRUE,
+    CONSTRAINT pk_prod_prov      PRIMARY KEY (id_prov, id_prod),
+    CONSTRAINT fk_prodprov_prov  FOREIGN KEY (id_prov)
+               REFERENCES tab_prov (id_prov) ON DELETE RESTRICT,
+    CONSTRAINT fk_prodprov_prod  FOREIGN KEY (id_prod)
+               REFERENCES tab_prod (id_prod) ON DELETE RESTRICT,
+    CONSTRAINT ck_prodprov_valor CHECK (val_prod > 0)
+);
+
+-- 7. Áreas de la empresa
+CREATE TABLE tab_areas
+(
+    id_area     DECIMAL(2,0)	NOT NULL,
+    nom_area    VARCHAR(60)     NOT NULL,
+    nom_encarg  VARCHAR(100)    NOT NULL,
+    CONSTRAINT pk_areas        PRIMARY KEY (id_area),
+    CONSTRAINT uq_areas_nombre UNIQUE (nom_area),
+    CONSTRAINT ck_areas_id     CHECK (id_area > 0)
+);
+
+-- 8. Órdenes de compra: encabezado + detalle (una orden, varios productos)
+CREATE TABLE tab_orden_compra
+(
+    id_orden   DECIMAL(6,0) NOT NULL,
+    fec_orden  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    id_area    DECIMAL(2,0) NOT NULL,
+    CONSTRAINT pk_orden      PRIMARY KEY (id_orden),
+    CONSTRAINT fk_orden_area FOREIGN KEY (id_area)
+               REFERENCES tab_areas (id_area) ON DELETE RESTRICT,
+    CONSTRAINT ck_orden_id   CHECK (id_orden > 0)
+);
+
+CREATE TABLE tab_det_orden
+(
+    id_orden  DECIMAL(6,0) NOT NULL,
+    id_prod   SMALLINT     NOT NULL,
+    val_cant  SMALLINT     NOT NULL,
+    CONSTRAINT pk_det_orden      PRIMARY KEY (id_orden, id_prod),
+    CONSTRAINT fk_detorden_orden FOREIGN KEY (id_orden)
+               REFERENCES tab_orden_compra (id_orden) ON DELETE CASCADE,
+    CONSTRAINT fk_detorden_prod  FOREIGN KEY (id_prod)
+               REFERENCES tab_prod (id_prod) ON DELETE RESTRICT,
+    CONSTRAINT ck_detorden_cant  CHECK (val_cant > 0)
+);
+
+-- 9. Facturas de compra: encabezado
+CREATE TABLE tab_enc_compra
+(
+    id_factura       DECIMAL(6,0)  NOT NULL,
+    fec_factura      DATE          NOT NULL DEFAULT CURRENT_DATE,
+    id_prov          DECIMAL(10,0) NOT NULL,
+    id_ciud_entrega  VARCHAR(5)    NOT NULL,   -- ciudad donde se recibe la compra
+    val_observa      TEXT,
+    CONSTRAINT pk_enc_compra    PRIMARY KEY (id_factura),
+    CONSTRAINT fk_enc_prov      FOREIGN KEY (id_prov)
+               REFERENCES tab_prov (id_prov) ON DELETE RESTRICT,
+	CONSTRAINT fk_enc_ciud      FOREIGN KEY (id_ciud_entrega)
+			   REFERENCES tab_ciud (id_ciud) ON DELETE RESTRICT,
+	CONSTRAINT ck_enc_id        CHECK (id_factura > 0),
+	CONSTRAINT ck_enc_fecha     CHECK (fec_factura >= DATE '2000-01-01')
+);
+
+-- 10. Facturas de compra: detalle (bruto, IVA y neto se CALCULAN)
+CREATE TABLE tab_det_compra
+(
+    id_factura  DECIMAL(6,0)  NOT NULL, 
+    id_prod     SMALLINT      NOT NULL,
+    val_cant    SMALLINT      NOT NULL,
+    val_unit    DECIMAL(10,0) NOT NULL,
+    val_descu   DECIMAL(12,0) NOT NULL DEFAULT 0,
+    porc_iva    DECIMAL(4,2)  NOT NULL DEFAULT 19,
+
+    -- a) Bruto = cantidad * precio unitario
+    val_bruto   DECIMAL(12,0) GENERATED ALWAYS AS (val_cant * val_unit) STORED,
+
+    -- b) IVA = Redondeo((Bruto - Descuento) * % IVA / 100)
+    val_iva     DECIMAL(12,0) GENERATED ALWAYS AS (
+                    ROUND((val_cant * val_unit - val_descu) * porc_iva / 100.0)
+                ) STORED,
+
+    -- c) Neto = Bruto - Descuento + IVA
+    val_neto    DECIMAL(12,0) GENERATED ALWAYS AS (
+                    (val_cant * val_unit - val_descu) + 
+                    ROUND((val_cant * val_unit - val_descu) * porc_iva / 100.0)
+                ) STORED,
+
+    CONSTRAINT pk_det_compra     PRIMARY KEY (id_factura, id_prod),
+    CONSTRAINT fk_detcomp_enc    FOREIGN KEY (id_factura)
+               REFERENCES tab_enc_compra (id_factura) 
+               ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_detcomp_prod   FOREIGN KEY (id_prod)
+               REFERENCES tab_prod (id_prod) 
+               ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT ck_detcomp_cant   CHECK (val_cant > 0),
+    CONSTRAINT ck_detcomp_unit   CHECK (val_unit > 0),
+    CONSTRAINT ck_detcomp_descu  CHECK (val_descu >= 0 AND val_descu <= val_cant * val_unit),
+    CONSTRAINT ck_detcomp_iva    CHECK (porc_iva IN (0, 5, 19))
+);
+
+-- 11. Pagos (el saldo NO se almacena: se calcula en la vista)
+CREATE TABLE tab_pagos
+(
+    id_factura  DECIMAL(6,0)  NOT NULL,
+    id_pago     SMALLINT      NOT NULL,
+    fec_pago    DATE          NOT NULL DEFAULT CURRENT_DATE,
+    val_pago    DECIMAL(12,0) NOT NULL,
+	val_saldo	DECIMAL(10,0) NOT NULL,
+
+    CONSTRAINT pk_pagos        PRIMARY KEY (id_factura, id_pago),
+    CONSTRAINT fk_pagos_enc    FOREIGN KEY (id_factura)
+               REFERENCES tab_enc_compra (id_factura) 
+               ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT ck_pagos_id     CHECK (id_pago > 0),
+    CONSTRAINT ck_pagos_valor  CHECK (val_pago > 0)
+);
+
+-- Índices de apoyo para las claves foráneas más consultadas
+CREATE INDEX idx_ciud_dpto    ON tab_ciud (id_dpto);
+CREATE INDEX idx_prov_ciud    ON tab_prov (id_ciud);
+CREATE INDEX idx_enc_prov     ON tab_enc_compra (id_prov);
+CREATE INDEX idx_enc_fecha    ON tab_enc_compra (fec_factura);
+CREATE INDEX idx_detcomp_prod ON tab_det_compra (id_prod);
+
+
+--+++++++++++++++++++++++++++++++
+--+    INSERCIÓN DE DATOS       +
+--+++++++++++++++++++++++++++++++
+
+-- Insertar parámetros
+
+INSERT INTO tab_pmtros (id_empresa, dia_pagos1, dia_pagos2, dia_pagos3, num_orden) 
+VALUES (1, 1, 3, 5, 100001);
+
+-- Insertar departamentos
+INSERT INTO tab_dptos (id_dpto, nom_dpto) 
+VALUES 
+('01', 'Amazonas'), ('02', 'Antioquia'), ('03', 'Arauca'), ('04', 'Atlántico'), ('05', 'Bolívar');
+
+-- Insertar ciudades (8 ciudades por departamento)
+INSERT INTO tab_ciud (id_ciud, nom_ciud, id_dpto) 
+VALUES 
+-- Amazonas (01)
+('01001', 'Leticia', '01'), ('01002', 'Puerto Nariño', '01'), ('01003', 'Tarapacá', '01'), ('01004', 'Puerto Arica', '01'),
+('01005', 'Puerto Santander', '01'), ('01006', 'La Pedrera', '01'), ('01007', 'Mirití', '01'), ('01008', 'El Encanto', '01'),
+
+-- Antioquia (02)
+('02001', 'Medellín', '02'), ('02002', 'Bello', '02'), ('02003', 'Itagüí', '02'), ('02004', 'Envigado', '02'),
+('02005', 'Rionegro', '02'), ('02006', 'Marinilla', '02'), ('02007', 'Copacabana', '02'), ('02008', 'La Estrella', '02'),
+
+-- Arauca (03)
+('03001', 'Arauca', '03'), ('03002', 'Arauquita', '03'), ('03003', 'Saravena', '03'), ('03004', 'Fortul', '03'),
+('03005', 'Tame', '03'), ('03006', 'Cravo Norte', '03'), ('03007', 'Puerto Rondón', '03'), ('03008', 'La Esmeralda', '03'),
+
+-- Atlántico (04)
+('04001', 'Barranquilla', '04'), ('04002', 'Soledad', '04'), ('04003', 'Malambo', '04'), ('04004', 'Sabanalarga', '04'),
+('04005', 'Puerto Colombia', '04'), ('04006', 'Baranoa', '04'), ('04007', 'Galapa', '04'), ('04008', 'Usiacurí', '04'),
+
+-- Bolívar (05)
+('05001', 'Cartagena', '05'), ('05002', 'Magangué', '05'), ('05003', 'El Carmen de Bolívar', '05'), ('05004', 'Arjona', '05'),
+('05005', 'Turbaco', '05'), ('05006', 'San Juan Nepomuceno', '05'), ('05007', 'María la Baja', '05'), ('05008', 'Santa Rosa', '05');
+
+
+-- Insertar áreas
+INSERT INTO tab_areas (id_area, nom_area, nom_encarg) 
+VALUES
+(1, 'Administración', 'María González'),
+(2, 'Compras', 'Carlos Rodríguez'),
+(3, 'Ventas', 'Ana Martínez'),
+(4, 'Recursos Humanos', 'Pedro López'),
+(5, 'Tecnología', 'Laura Sánchez'),
+(6, 'Operaciones', 'Jorge Díaz'),
+(7, 'Calidad', 'Sofía Ramírez'),
+(8, 'Logística', 'David Torres');
+
+-- Insertar productos (20 productos)
+INSERT INTO tab_prod (id_prod, id_ref, nom_prod, ind_estado) 
+VALUES
+(1, 'PROD001', 'Laptop Gamer', false),
+(2, 'PROD002', 'Mouse Inalámbrico', true),
+(3, 'PROD003', 'Teclado Mecánico', true),
+(4, 'PROD004', 'Monitor 24"', true),
+(5, 'PROD005', 'Impresora Láser', true),
+(6, 'PROD006', 'Tablet 10"', true),
+(7, 'PROD007', 'Smartphone', true),
+(8, 'PROD008', 'Auriculares Bluetooth', true),
+(9, 'PROD009', 'Disco Duro SSD 1TB', true),
+(10, 'PROD010', 'Memoria RAM 16GB', true),
+(11, 'PROD011', 'Tarjeta Gráfica', true),
+(12, 'PROD012', 'Fuente de Poder', true),
+(13, 'PROD013', 'Cámara Web', true),
+(14, 'PROD014', 'Micrófono USB', true),
+(15, 'PROD015', 'Router WiFi', true),
+(16, 'PROD016', 'Silla Ergonómica', true),
+(17, 'PROD017', 'Escritorio Oficina', true),
+(18, 'PROD018', 'Proyector', true),
+(19, 'PROD019', 'Altavoces', true),
+(20, 'PROD020', 'UPS', true);
+
+-- Insertar proveedores
+INSERT INTO tab_prov (id_prov, nom_prov, ape1_prov, ape2_prov, dir_prov, tel_prov, email_prov, id_ciud, val_cupocre, val_puntos, num_fact, ind_estado) 
+VALUES
+(1000000001, 'Carlos', 'Gómez',     'Hernández', 'Calle 100 #45-20', '6011234567', 'carlos@tecnosum.com',  '02001', 5000000, 95, 1000, true),
+(1000000002, 'Ana',    'Martínez',  'López',     'Cra 50 #25-30',    '6047654321', 'ana@electroparts.com',  '02001', 3000000, 88, 2000, true),
+(1000000003, 'Luis',   'Rodríguez', 'Pérez',     'Av Boyacá #15-40', '6019876543', 'luis@compumundo.com',  '02001', 8000000, 92, 3000, true),
+(1000000004, 'María',  'López',     'García',    'Calle 80 #10-15',  '6051234567', 'maria@tecnoglobal.com','02001', 2500000, 85, 4000, true),
+(1000000005, 'Jorge',  'Díaz',      'Ramírez',   'Cra 30 #40-50',    '6024567890', 'jorge@digitalsol.com',  '02001', 4000000, 90, 5000, true);
+
+
+-- Insertar productos por proveedor
+INSERT INTO tab_prod_prov (id_prov, id_prod, val_prod, ind_disp)
+VALUES
+-- Proveedor 1
+(1000000001, 1, 2500000, true), (1000000001, 2, 85000, true), (1000000001, 3, 120000, true), (1000000001, 4, 800000, true), (1000000001, 5, 450000, true),
+-- Proveedor 2
+(1000000002, 2, 80000, true), (1000000002, 6, 1200000, true), (1000000002, 7, 1800000, true), (1000000002, 8, 150000, true), (1000000002, 9, 350000, true),
+-- Proveedor 3
+(1000000003, 3, 110000, true), (1000000003, 10, 280000, true), (1000000003, 11, 3200000, true), (1000000003, 12, 180000, true), (1000000003, 13, 90000, true),
+-- Proveedor 4
+(1000000004, 4, 750000, true), (1000000004, 14, 120000, true), (1000000004, 15, 200000, true), (1000000004, 16, 450000, true), (1000000004, 17, 600000, true),
+-- Proveedor 5
+(1000000005, 5, 420000, true), (1000000005, 18, 1500000, true), (1000000005, 19, 180000, true), (1000000005, 20, 400000, true), (1000000005, 1, 2450000, true);
+
+-- Insertar encabezados de órdenes (Crear las órdenes 100001 a 100005)
+INSERT INTO tab_orden_compra (id_orden, fec_orden, id_area) 
+VALUES
+(100001, '2024-01-15 08:30:00', 2),
+(100002, '2024-01-16 09:15:00', 3),
+(100003, '2024-01-17 10:00:00', 5),
+(100004, '2024-01-18 11:20:00', 6),
+(100005, '2024-01-19 14:30:00', 2);
+
+-- Insertar detalle de órdenes (Asociar productos a las órdenes existentes)
+INSERT INTO tab_det_orden (id_orden, id_prod, val_cant) VALUES
+(100001, 1, 5),   -- Orden 100001: 5 Laptops
+(100002, 2, 20),  -- Orden 100002: 20 Mouses
+(100003, 3, 15),  -- Orden 100003: 15 Teclados
+(100004, 4, 8),   -- Orden 100004: 8 Monitores
+(100005, 5, 10);  -- Orden 100005: 10 Impresoras
+
+-- Insertar encabezados de compra 
+INSERT INTO tab_enc_compra (id_factura, fec_factura, id_ciud_entrega, id_prov, val_observa) 
+VALUES
+-- Proveedor 1 (3 facturas)
+(200001, '2024-01-20', '02001', 1000000001, 'Compra equipos oficina - Entrega urgente'),
+(200002, '2024-02-15', '02001', 1000000001, 'Reposición stock laptops'),
+(200003, '2024-03-10', '02001', 1000000001, 'Pedido especial área tecnología'),
+
+-- Proveedor 2 (3 facturas)
+(200004, '2024-01-25', '02001', 1000000002, 'Suministros tecnología - Revisar calidad'),
+(200005, '2024-02-20', '02001', 1000000002, 'Compra tablets departamento ventas'),
+(200006, '2024-03-15', '02001', 1000000002, 'Renovación equipos móviles'),
+
+-- Proveedor 3 (3 facturas)
+(200007, '2024-01-30', '02001', 1000000003, 'Equipos cómputo - Facturación correcta'),
+(200008, '2024-02-25', '02001', 1000000003, 'Componentes actualización servidores'),
+(200009, '2024-03-20', '02001', 1000000003, 'Hardware gamer área recreación'),
+
+-- Proveedor 4 (3 facturas)
+(200010, '2024-02-05', '02001', 1000000004, 'Mobiliario oficina - Instalación incluida'),
+(200011, '2024-03-01', '02001', 1000000004, 'Monitores nuevas oficinas'),
+(200012, '2024-03-25', '02001', 1000000004, 'Equipos audio videoconferencias'),
+
+-- Proveedor 5 (3 facturas)
+(200013, '2024-02-10', '02001', 1000000005, 'Dispositivos electrónicos - Garantía extendida'),
+(200014, '2024-03-05', '02001', 1000000005, 'Proyectores sala juntas'),
+(200015, '2024-03-30', '02001', 1000000005, 'Sistema respaldo energía');
+
+-- Inserción de detalles de compra (con val_unit obligatorio)
+INSERT INTO tab_det_compra (id_factura, id_prod, val_cant, val_unit, val_descu) 
+VALUES
+-- Facturas Proveedor 1
+(200001, 1, 2, 2500000, 250000),
+(200001, 2, 10, 85000, 42500),
+(200002, 1, 3, 2500000, 375000),
+(200002, 3, 5, 120000, 30000),
+(200003, 4, 4, 800000, 160000),
+(200003, 5, 2, 450000, 45000),
+
+-- Facturas Proveedor 2
+(200004, 2, 15, 80000, 60000),
+(200004, 6, 3, 1200000, 180000),
+(200005, 6, 5, 1200000, 300000),
+(200005, 7, 2, 1800000, 180000),
+(200006, 7, 4, 1800000, 360000),
+(200006, 8, 8, 150000, 60000),
+
+-- Facturas Proveedor 3
+(200007, 3, 10, 110000, 55000),
+(200007, 10, 15, 280000, 210000),
+(200008, 11, 2, 3200000, 320000),
+(200008, 12, 10, 180000, 90000),
+(200009, 13, 20, 90000, 90000),
+
+-- Facturas Proveedor 4
+(200010, 4, 6, 750000, 225000),
+(200010, 14, 12, 120000, 72000),
+(200011, 15, 8, 200000, 80000),
+(200012, 16, 5, 450000, 112500),
+
+-- Facturas Proveedor 5
+(200013, 5, 4, 420000, 84000),
+(200013, 18, 1, 1500000, 75000),
+(200014, 19, 6, 180000, 54000),
+(200015, 20, 3, 400000, 60000);
+
+-- Insertar pagos (para las primeras 20 facturas como ejemplo)
+INSERT INTO tab_pagos (id_factura, id_pago, fec_pago, val_pago, val_saldo) 
+VALUES
+-- Pagos para factura 200001
+(200001, 1, '2024-02-05', 2000000, 3605000),
+(200001, 2, '2024-02-15', 2000000, 1605000),
+(200001, 3, '2024-02-25', 1605000, 0),
+
+-- Pagos para factura 200002
+(200002, 1, '2024-03-05', 4000000, 4412500),
+(200002, 2, '2024-03-15', 4000000, 412500),
+(200002, 3, '2024-03-25', 412500, 0),
+
+-- Pagos para factura 200003
+(200003, 1, '2024-04-05', 2500000, 2057150),
+(200003, 2, '2024-04-15', 2057150, 0),
+
+-- Pagos para factura 200004
+(200004, 1, '2024-03-05', 1500000, 3837600),
+(200004, 2, '2024-03-15', 2000000, 1837600),
+(200004, 3, '2024-03-25', 1837600, 0),
+
+-- Pagos para factura 200005
+(200005, 1, '2024-04-05', 5000000, 5670400),
+(200005, 2, '2024-04-15', 5000000, 670400),
+(200005, 3, '2024-04-25', 670400, 0),
+
+-- Pagos para factura 200006
+(200006, 1, '2024-05-05', 4000000, 5336600),
+(200006, 2, '2024-05-15', 4000000, 1336600),
+(200006, 3, '2024-05-25', 1336600, 0),
+
+-- Continuar con más pagos...
+-- Pagos para factura 200007
+(200007, 1, '2024-04-05', 3000000, 2881600),
+(200007, 2, '2024-04-15', 2881600, 0),
+
+-- Pagos para factura 200008
+(200008, 1, '2024-05-05', 4000000, 5034300),
+(200008, 2, '2024-05-15', 4000000, 1034300),
+(200008, 3, '2024-05-25', 1034300, 0),
+
+-- Pagos para factura 200009
+(200009, 1, '2024-06-05', 1000000, 1000700),
+(200009, 2, '2024-06-15', 1000700, 0),
+
+-- Pagos para factura 200010
+(200010, 1, '2024-05-05', 3000000, 3602310),
+(200010, 2, '2024-05-15', 3000000, 602310),
+(200010, 3, '2024-05-25', 602310, 0);
+
+--------------------------------------------------------
+--++++++++++++++++++++++++++++++++++++++++++++++++++++++
+--+ BLOQUE I CONSULTAS BÁSICAS, FILTROS Y AGREGACIONES +
+--++++++++++++++++++++++++++++++++++++++++++++++++++++++
+--------------------------------------------------------
+
+--Ejercicio 1 (SELECT Básica): Escriba una consulta para seleccionar todos los campos y registros de la tabla de proveedores (tab_prov).
+SELECT * --El asterisco (*) indica que se proyectarán todos los campos (columnas) de la tabla.
+FROM tab_prov; --Especifica la tabla de origen (proveedores).
+
+--Ejercicio 2 (SELECT con WHERE): Obtenga todos los productos (tab_prod) cuyo estado (ind_estado) se encuentre activo (true).
+SELECT nom_prod, ind_estado
+FROM tab_prod
+WHERE ind_estado = TRUE; -- Aplica un filtro para obtener únicamente los registros donde la columna ind_estado sea verdadera (activo).
+
+
+--Ejercicio 3 (SELECT con ORDER BY): Liste los proveedores de la tabla tab_prov ordenados alfabéticamente de forma ascendente por su primer nombre.
+SELECT *
+FROM tab_prov
+ORDER BY nom_prov ASC; --Ordena los registros alfabéticamente de la A a la Z según la columna indicada.
+
+
+--Ejercicio 4 (SELECT con LIMIT): Muestre únicamente los primeros 10 registros de la tabla de ciudades (tab_ciud), proyectando su ID y nombre.
+SELECT id_ciud, nom_ciud --Proyecta únicamente las dos columnas solicitadas (ID y Nombre), evitando traer toda la tabla con *
+FROM tab_ciud
+LIMIT 10;
+
+--Ejercicio 5 (SELECT con COUNT): Obtenga el número total de órdenes de compra (tab_orden_compra) registradas en el sistema.
+SELECT COUNT(*) AS total_ordenes --COUNT(*): Función de agregación que cuenta el número total de filas o registros presentes en la tabla.
+FROM tab_orden_compra;
+
+--Ejercicio 6 (SELECT con SUM): Calcule el monto total acumulado del valor neto (val_neto) facturado en la tabla de detalle de compra (tab_det_compra).
+SELECT SUM(val_neto) AS total_neto_facturado --Función de agregación que suma todos los valores contenidos en la columna val_neto y asigna un alias descriptivo al resultado. 
+FROM tab_det_compra;
+
+--Ejercicio 7 (SELECT con AVG): Determine el valor promedio del cupo de crédito (val_cupocre) otorgado a los proveedores en tab_prov.
+SELECT AVG(val_cupocre) AS promedio_cupo_credito --AVG(val_cupocre): Función de agregación que calcula el valor promedio numérico de la columna val_cupocre y asigna un alias descriptivo al resultado. 
+FROM tab_prov;
+
+--Ejercicio 8 (SELECT con GROUP BY): Muestre la cantidad total de ciudades registradas por cada departamento en la tabla tab_ciud.
+SELECT id_dpto, COUNT(*) AS total_ciudades --COUNT(*) AS total_ciudades: Cuenta la cantidad de ciudades pertenecientes a cada departamento y le asigna un alias descriptivo al resultado.
+FROM tab_ciud
+GROUP BY id_dpto; --GROUP BY id_dpto: Agrupa las filas que comparten el mismo departamento para aplicar la función de conteo sobre cada uno de ellos.
+
+--Ejercicio 9 (INSERT): Escriba la sentencia para insertar una nueva área en tab_areas con ID 9, nombre 'Auditoría' y encargada 'Elena Beltrán'.
+INSERT INTO tab_areas (id_area, nom_area, nom_encarg) -- Define las columnas que recibirán los valores.
+VALUES (9, 'Auditoría', 'Elena Beltrán'); --Asigna los datos a insertar respetando el orden de las columnas (el ID numérico va sin comillas y las cadenas de texto entre comillas simples).-Asigna los datos a insertar respetando el orden de las columnas (el ID numérico va sin comillas y las cadenas de texto entre comillas simples).
+
+--Ejercicio 10 (UPDATE): Actualice la cantidad de puntos (val_puntos) a 98 para el proveedor con ID 1000000001 en tab_prov.
+UPDATE tab_prov --Especifica la tabla sobre la cual se realizará la modificación de datos.
+SET val_puntos = 98 --Asigna el nuevo valor (98) a la columna val_puntos.
+WHERE id_prov = 1000000001; -- Filtra la operación para que el cambio afecte únicamente al proveedor con ese identificador específico.
+
+
+-----------------------------------------------------
+--+++++++++++++++++++++++++++++++++++++++++++++++++++
+--+ BLOQUE II: MODIFICACIONES, JOINS Y SUBCONSULTAS +
+--+++++++++++++++++++++++++++++++++++++++++++++++++++
+-----------------------------------------------------
+--Ejercicio 11 (DELETE): Elimine el registro de la orden de compra en tab_orden_compra cuyo id_orden sea 100030.
+DELETE FROM tab_orden_compra --Indica la tabla sobre la cual se ejecutará la eliminación del registro.
+WHERE id_orden = 100030; -- Condición indispensable que asegura borrar exclusivamente la orden especificada con ese ID.
+
+--Ejercicio 12 (JOIN): Realice una consulta que combine tab_ciud y tab_dptos para mostrar el nombre de la ciudad y el nombre de su respectivo departamento.
+SELECT c.nom_ciud, d.nom_dpto --Proyecta las columnas deseadas 
+FROM tab_ciud c --Define la tabla principal (tab_ciud) y le asigna el alias c para simplificar la referencia a sus columnas.
+INNER JOIN tab_dptos d ON c.id_dpto = d.id_dpto; -- Combina la tabla de ciudades con la tabla de departamentos (tab_dptos), asignándole a esta última el alias d.
+
+--Ejercicio 13 (Subconsulta): Seleccione todos los productos de tab_prod cuyos IDs estén presentes en tab_prod_prov con un valor del producto (val_prod) superior a 2,000,000.
+SELECT *
+FROM tab_prod
+WHERE id_prod IN --Filtra los productos de tab_prod cuyo identificador exista dentro de la lista devuelta por la subconsulta.
+(
+    SELECT id_prod
+    FROM tab_prod_prov
+    WHERE val_prod > 2000000 --Subconsulta que obtiene los IDs de los productos en tab_prod_prov cuyo valor registrado supera los 2,000,000.
+);
+--Ejercicio 14 (CASE): Clasifique a los proveedores según su cupo de crédito: 'Cupo Alto' (>= 5,000,000), 'Cupo Medio' (3,000,000 a 4,999,999) y 'Cupo Bajo' (< 3,000,000).
+SELECT id_prov, nom_prov, val_cupocre,
+       CASE                                   --Evalúa una secuencia de condiciones lógicas
+           WHEN val_cupocre >= 5000000 THEN 'Cupo Alto' --Clasifica los cupos de 5,000,000 en adelante.
+           WHEN val_cupocre >= 3000000 THEN 'Cupo Medio' --Evalúa los valores restantes entre 3,000,000 y 4,999,999.
+           ELSE 'Cupo Bajo'               --Asigna esta categoría a todos los cupos menores a 3,000,000.    
+       END AS clasificacion_cupo          --Nombre o alias para la columna calculada.
+FROM tab_prov;
+
+--Ejercicio 15 (UNION): Combine en un único listado sin duplicados los IDs de los productos pedidos en órdenes de compra y los facturados en detalles de compra.
+SELECT id_prod
+FROM tab_det_orden --Obtiene la lista de identificadores de productos registrados en los detalles de las órdenes de compra.
+UNION                     --Combina los conjuntos de resultados de ambos.
+SELECT id_prod            --En un único listado y elimina automáticamente los duplicados.
+FROM tab_det_compra;       --Obtiene la lista de productos facturados en los detalles de compra.
+
+--Ejercicio 16 (UNION ALL): Combine en una lista (incluyendo duplicados) los códigos de ciudad asociados a proveedores y los vinculados a encabezados de compra.
+SELECT id_ciud
+FROM tab_prov
+UNION ALL     --Une ambos listados conservando todas las filas y repeticiones.
+SELECT id_ciud_entrega
+FROM tab_enc_compra;  -- Toma la columna exacta de la ciudad de entrega en los encabezados de compra.
+
+--Ejercicio 17 (HAVING): Muestre los IDs de las facturas en tab_det_compra que tengan asociadas más de 1 línea de detalle/producto.
+SELECT id_factura, COUNT(*) AS total_lineas --Muestra el identificador de la factura y cuenta cuántas líneas de detalle o productos tiene registradas.
+FROM tab_det_compra
+GROUP BY id_factura  -- Agrupa los registros por cada factura individual para poder calcular el total de ítems por cada una.
+HAVING COUNT(*) > 1;  --Filtra los grupos resultantes para conservar únicamente aquellas facturas cuya cantidad de ítems o líneas sea estrictamente mayor a 1.
+
+--Ejercicio 18 (EXISTS): Seleccione los proveedores en tab_prov que tengan al menos una factura registrada en tab_enc_compra.
+SELECT *
+FROM tab_prov p
+WHERE EXISTS (
+    SELECT 1
+    FROM tab_enc_compra e
+    WHERE e.id_prov = p.id_prov
+);
+
+--Ejercicio 19 (LIKE): Liste los proveedores cuyo correo electrónico (campo compuesto datos_prov) contenga la subcadena 'tecnosum'.
+SELECT *
+FROM tab_prov
+WHERE email_prov ILIKE '%tecnosum%'; --Filtra la tabla evaluando directamente la columna email_prov para encontrar cualquier registro que contenga 'tecnosum' en cualquier parte de la dirección de correo.
+
+--Ejercicio 20 (BETWEEN): Consulte los encabezados de compra (tab_enc_compra) con fecha de factura entre el 1 de febrero de 2024 y el 29 de febrero de 2024.
+SELECT *
+FROM tab_enc_compra
+WHERE fec_factura BETWEEN '2024-02-01' AND '2024-02-29'; --Filtra los registros evaluando la columna fec_factura para conservar aquellos cuya fecha caiga dentro del rango (ambos extremos incluidos, cubriendo todo el mes de febrero de 2024).
+
+
